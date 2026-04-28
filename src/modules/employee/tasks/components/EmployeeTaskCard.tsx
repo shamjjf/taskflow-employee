@@ -1,0 +1,114 @@
+'use client';
+
+import { useRouter } from 'next/navigation';
+import { cn } from '@/lib/utils';
+import { Badge, Button } from '@/components/ui';
+import { Calendar, Clock, CheckCircle2, Play, MessageSquare } from 'lucide-react';
+import { TASK_PRIORITY_LABELS } from '@/constants';
+import type { Task } from '@/types';
+
+interface EmployeeTaskCardProps {
+  task: Task;
+  onAction?: (task: Task) => void;
+}
+
+const priorityStyles = {
+  high: 'text-[#dc2626] bg-[#fef2f2] border-[#fecaca]',
+  medium: 'text-[#d97706] bg-[#fffbeb] border-[#fde68a]',
+  low: 'text-[#059669] bg-[#ecfdf5] border-[#a7f3d0]',
+};
+
+const statusLabels: Record<
+  string,
+  { label: string; variant: 'info' | 'warning' | 'success' | 'danger' }
+> = {
+  assigned: { label: 'Assigned', variant: 'info' },
+  in_progress: { label: 'In Progress', variant: 'warning' },
+  completed: { label: 'Completed', variant: 'success' },
+  overdue: { label: 'Overdue', variant: 'danger' },
+};
+
+export function EmployeeTaskCard({ task, onAction }: EmployeeTaskCardProps) {
+  const router = useRouter();
+  const status = statusLabels[task.status];
+
+  const goToDetail = () => router.push(`/task/${task.id}`);
+
+  const handleActionClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    onAction?.(task);
+  };
+
+  return (
+    <div
+      onClick={goToDetail}
+      className="bg-white border border-border rounded-lg p-5 transition-all hover:border-primary hover:shadow-md cursor-pointer"
+    >
+      <div className="flex items-start justify-between gap-4 mb-3">
+        <div className="flex-1 min-w-0">
+          <div className="text-[15px] font-semibold mb-1.5 hover:text-primary transition-colors">
+            {task.title}
+          </div>
+          {task.description && (
+            <div className="text-[13px] text-[#71717a] leading-relaxed line-clamp-2">
+              {task.description}
+            </div>
+          )}
+        </div>
+        <Badge variant={status.variant}>{status.label}</Badge>
+      </div>
+
+      <div className="flex items-center gap-2 mb-4 flex-wrap">
+        <span
+          className={cn(
+            'inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11.5px] font-medium border',
+            priorityStyles[task.priority]
+          )}
+        >
+          {TASK_PRIORITY_LABELS[task.priority]} Priority
+        </span>
+        <div className="flex items-center gap-1 text-[11.5px] text-[#71717a]">
+          <Calendar size={12} />
+          <span>Due: {task.deadlineLabel}</span>
+        </div>
+        {task.status === 'in_progress' && task.startedAt && (
+          <div className="flex items-center gap-1 text-[11.5px] text-[#71717a]">
+            <Clock size={12} />
+            <span>Started earlier today</span>
+          </div>
+        )}
+      </div>
+
+      <div className="flex items-center justify-between pt-3 border-t border-border">
+        <div className="text-[11.5px] text-[#71717a]">
+          Click anywhere to view & comment
+        </div>
+        <div className="flex gap-2">
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={(e) => {
+              e.stopPropagation();
+              goToDetail();
+            }}
+          >
+            <MessageSquare size={12} />
+            View & Comment
+          </Button>
+          {task.status === 'assigned' && (
+            <Button variant="primary" size="sm" onClick={handleActionClick}>
+              <Play size={12} strokeWidth={2.5} />
+              Start Task
+            </Button>
+          )}
+          {task.status === 'in_progress' && (
+            <Button variant="primary" size="sm" onClick={handleActionClick}>
+              <CheckCircle2 size={12} strokeWidth={2.5} />
+              Mark Complete
+            </Button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
