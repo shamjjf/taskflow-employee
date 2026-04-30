@@ -123,7 +123,9 @@ class AgoraRTCService {
     if (this.localVideoTrack) {
       await this.client.unpublish(this.localVideoTrack);
     }
-    await this.client.publish(this.localScreenTrack);
+    if (this.localScreenTrack) {
+  await this.client.publish(this.localScreenTrack);
+}
 
     // Listen for user clicking "Stop sharing" in browser
     this.localScreenTrack.on('track-ended', () => {
