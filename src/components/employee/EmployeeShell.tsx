@@ -1,12 +1,20 @@
 'use client';
 
 import { ReactNode } from 'react';
+import dynamic from 'next/dynamic';
 import { EmployeeSidebar } from './EmployeeSidebar';
 import { EmployeeTopbar } from './EmployeeTopbar';
 import { AssignTaskModal } from '@/modules/employee/team-tasks/components/AssignTaskModal';
 import { useRole } from '@/hooks/useRole';
 import { useSocket } from '@/hooks/useSocket';
-import { CallProvider } from '@/modules/calls/components/CallProvider';
+
+// Dynamically import CallProvider with SSR disabled.
+// The Agora SDK accesses `window` at module load time, so it cannot be
+// included in the server-side bundle.
+const CallProvider = dynamic(
+  () => import('@/modules/calls/components/CallProvider').then((m) => m.CallProvider),
+  { ssr: false }
+);
 
 interface EmployeeShellProps {
   children: ReactNode;
@@ -27,7 +35,7 @@ export function EmployeeShell({ children }: EmployeeShellProps) {
       </div>
       {isTeamLeader && <AssignTaskModal />}
 
-      {/* Mounts incoming call popup + active call window globally */}
+      {/* Mounts incoming call popup + active call window globally (browser only) */}
       <CallProvider />
     </div>
   );

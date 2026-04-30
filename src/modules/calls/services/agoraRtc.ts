@@ -1,4 +1,12 @@
-import AgoraRTC, {
+/**
+ * Agora RTC service wrapper.
+ *
+ * IMPORTANT: This file uses dynamic import for the Agora SDK because the SDK
+ * accesses `window` at module load time, which crashes Next.js SSR builds.
+ * The SDK is only ever loaded in the browser, lazily on first use.
+ */
+
+import type {
   IAgoraRTCClient,
   ICameraVideoTrack,
   IMicrophoneAudioTrack,
@@ -7,10 +15,6 @@ import AgoraRTC, {
 } from 'agora-rtc-sdk-ng';
 
 const APP_ID = process.env.NEXT_PUBLIC_AGORA_APP_ID || '';
-
-if (!APP_ID && typeof window !== 'undefined') {
-  console.warn('⚠️  NEXT_PUBLIC_AGORA_APP_ID not set');
-}
 
 export type CallType = 'audio' | 'video';
 type MediaType = 'audio' | 'video';
@@ -31,7 +35,13 @@ export interface AgoraServiceCallbacks {
   onConnectionStateChange?: (state: string, prevState: string) => void;
 }
 
+/**
+ * Type for the AgoraRTC default export. Uses minimal typing — only what we need.
+ */
+type AgoraRTCSDK = typeof import('agora-rtc-sdk-ng').default;
+
 class AgoraRTCService {
+  private sdk: AgoraRTCSDK | null = null;
   private client: IAgoraRTCClient | null = null;
   private localAudioTrack: IMicrophoneAudioTrack | null = null;
   private localVideoTrack: ICameraVideoTrack | null = null;
@@ -40,6 +50,18 @@ class AgoraRTCService {
   private currentChannel: string | null = null;
   private currentUid: number | null = null;
   private isScreenSharing = false;
+
+  /** Lazily load the SDK in the browser only. Throws on the server. */
+  private async getSDK(): Promise<AgoraRTCSDK> {
+    if (typeof window === 'undefined') {
+      throw new Error('Agora SDK can only be used in the browser');
+    }
+    if (!this.sdk) {
+      const mod = await import('agora-rtc-sdk-ng');
+      this.sdk = mod.default;
+    }
+    return this.sdk;
+  }
 
   setCallbacks(callbacks: AgoraServiceCallbacks) {
     this.callbacks = callbacks;
@@ -52,6 +74,8 @@ class AgoraRTCService {
     callType: CallType;
   }): Promise<void> {
     if (!APP_ID) throw new Error('Agora App ID not configured');
+
+    const AgoraRTC = await this.getSDK();
 
     if (!this.client) {
       this.client = AgoraRTC.createClient({ mode: 'rtc', codec: 'vp8' });
@@ -99,6 +123,8 @@ class AgoraRTCService {
 
   async startScreenShare(): Promise<void> {
     if (!this.client || this.isScreenSharing) return;
+
+    const AgoraRTC = await this.getSDK();
 
     const screenTrackResult = await AgoraRTC.createScreenVideoTrack(
       { encoderConfig: '1080p_1' },
@@ -191,14 +217,12 @@ class AgoraRTCService {
     if (!this.client) return;
 
     this.client.on('user-published', async (user, mediaType) => {
-      // Only handle audio/video — ignore datachannel
       if (mediaType !== 'audio' && mediaType !== 'video') return;
       await this.subscribeToUser(user, mediaType);
       this.callbacks.onUserPublished?.(user, mediaType);
     });
 
     this.client.on('user-unpublished', (user, mediaType) => {
-      // Only handle audio/video — ignore datachannel
       if (mediaType !== 'audio' && mediaType !== 'video') return;
       this.callbacks.onUserUnpublished?.(user, mediaType);
     });
