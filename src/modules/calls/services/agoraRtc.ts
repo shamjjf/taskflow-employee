@@ -40,12 +40,10 @@ class AgoraRTCService {
   private currentUid: number | null = null;
   private isScreenSharing = false;
 
-  /** Set event callbacks (call before join) */
   setCallbacks(callbacks: AgoraServiceCallbacks) {
     this.callbacks = callbacks;
   }
 
-  /** Initialize client + join channel */
   async join(opts: {
     token: string;
     channelName: string;
@@ -54,23 +52,20 @@ class AgoraRTCService {
   }): Promise<void> {
     if (!APP_ID) throw new Error('Agora App ID not configured');
 
-    // Reuse the same client if it's already in the right state
     if (!this.client) {
       this.client = AgoraRTC.createClient({ mode: 'rtc', codec: 'vp8' });
       this.attachClientListeners();
     }
 
-    // Join the channel
     await this.client.join(APP_ID, opts.channelName, opts.token, opts.uid);
     this.currentChannel = opts.channelName;
     this.currentUid = opts.uid;
 
-    // Create + publish local tracks
     this.localAudioTrack = await AgoraRTC.createMicrophoneAudioTrack();
 
     if (opts.callType === 'video') {
       this.localVideoTrack = await AgoraRTC.createCameraVideoTrack({
-        encoderConfig: '480p_1', // 640x480, 15fps, 500kbps - good balance
+        encoderConfig: '480p_1',
       });
       await this.client.publish([this.localAudioTrack, this.localVideoTrack]);
     } else {
@@ -78,74 +73,66 @@ class AgoraRTCService {
     }
   }
 
-  /** Renew token before expiry (call this from a timer) */
   async renewToken(token: string): Promise<void> {
     if (!this.client) return;
     await this.client.renewToken(token);
   }
 
-  /** Get the local video track to render in a DOM element */
   getLocalVideoTrack(): ICameraVideoTrack | null {
     return this.localVideoTrack;
   }
 
-  /** Get screen share track (when active) */
   getLocalScreenTrack(): ILocalVideoTrack | null {
     return this.localScreenTrack;
   }
 
-  /** Mute / unmute microphone */
   async setMicMuted(muted: boolean): Promise<void> {
     if (!this.localAudioTrack) return;
     await this.localAudioTrack.setMuted(muted);
   }
 
-  /** Turn camera on / off */
   async setCameraOff(off: boolean): Promise<void> {
     if (!this.localVideoTrack) return;
     await this.localVideoTrack.setMuted(off);
   }
 
-  /** Start screen sharing - replaces video track */
   async startScreenShare(): Promise<void> {
     if (!this.client || this.isScreenSharing) return;
 
-    // Create screen track
-    const screenTrack = await AgoraRTC.createScreenVideoTrack(
+    const screenTrackResult = await AgoraRTC.createScreenVideoTrack(
       { encoderConfig: '1080p_1' },
-      'disable' // Don't share screen audio (simpler)
+      'disable'
     );
 
-    // Handle case where it returns an array
-    this.localScreenTrack = Array.isArray(screenTrack) ? screenTrack[0] : screenTrack;
+    // createScreenVideoTrack returns a single track when audio is 'disable'
+    const screenTrack: ILocalVideoTrack = Array.isArray(screenTrackResult)
+      ? screenTrackResult[0]
+      : screenTrackResult;
 
-    // Unpublish camera, publish screen
     if (this.localVideoTrack) {
       await this.client.unpublish(this.localVideoTrack);
     }
-    if (this.localScreenTrack) {
-  await this.client.publish(this.localScreenTrack);
-}
 
-    // Listen for user clicking "Stop sharing" in browser
-    this.localScreenTrack.on('track-ended', () => {
+    await this.client.publish(screenTrack);
+
+    screenTrack.on('track-ended', () => {
       this.stopScreenShare().catch(console.error);
     });
 
+    this.localScreenTrack = screenTrack;
     this.isScreenSharing = true;
   }
 
-  /** Stop screen sharing - restore camera if it existed */
   async stopScreenShare(): Promise<void> {
     if (!this.client || !this.isScreenSharing) return;
 
-    if (this.localScreenTrack) {
-      await this.client.unpublish(this.localScreenTrack);
-      this.localScreenTrack.close();
+    const screenTrack = this.localScreenTrack;
+    if (screenTrack) {
+      await this.client.unpublish(screenTrack);
+      screenTrack.close();
       this.localScreenTrack = null;
     }
 
-    // Restore camera if it existed before
     if (this.localVideoTrack) {
       await this.client.publish(this.localVideoTrack);
     }
@@ -157,15 +144,12 @@ class AgoraRTCService {
     return this.isScreenSharing;
   }
 
-  /** Leave the channel + clean up all tracks */
   async leave(): Promise<void> {
     try {
-      // Stop screen share if active
       if (this.isScreenSharing) {
         await this.stopScreenShare();
       }
 
-      // Close local tracks
       if (this.localAudioTrack) {
         this.localAudioTrack.close();
         this.localAudioTrack = null;
@@ -175,7 +159,6 @@ class AgoraRTCService {
         this.localVideoTrack = null;
       }
 
-      // Leave channel
       if (this.client) {
         await this.client.leave();
       }
@@ -188,7 +171,6 @@ class AgoraRTCService {
     }
   }
 
-  /** Subscribe + play a remote user's audio/video */
   async subscribeToUser(
     user: IAgoraRTCRemoteUser,
     mediaType: 'audio' | 'video'
@@ -197,10 +179,12 @@ class AgoraRTCService {
     await this.client.subscribe(user, mediaType);
 
     if (mediaType === 'audio') {
-      // Audio plays automatically
       user.audioTrack?.play();
     }
-    // Video needs to be played in a DOM element by the component
+  }
+
+  getClient(): IAgoraRTCClient | null {
+    return this.client;
   }
 
   private attachClientListeners() {
@@ -230,5 +214,4 @@ class AgoraRTCService {
   }
 }
 
-// Singleton — only one call at a time per browser tab
 export const agoraRTC = new AgoraRTCService();
