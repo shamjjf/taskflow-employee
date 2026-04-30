@@ -29,6 +29,33 @@ export function formatRelativeTime(date: string | Date): string {
   return d.toLocaleDateString();
 }
 
+/** Format a date as "23 Apr 2026, 3:45 PM" */
+export function formatDateTime(date: string | Date | undefined | null): string {
+  if (!date) return '—';
+  const d = typeof date === 'string' ? new Date(date) : date;
+  if (isNaN(d.getTime())) return '—';
+  return d.toLocaleString(undefined, {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true,
+  });
+}
+
+/** Format a date as "23 Apr 2026" (no time) */
+export function formatDate(date: string | Date | undefined | null): string {
+  if (!date) return '—';
+  const d = typeof date === 'string' ? new Date(date) : date;
+  if (isNaN(d.getTime())) return '—';
+  return d.toLocaleDateString(undefined, {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+  });
+}
+
 export function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }

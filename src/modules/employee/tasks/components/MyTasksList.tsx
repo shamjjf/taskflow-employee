@@ -12,7 +12,7 @@ type TabKey = 'all' | 'assigned' | 'in_progress' | 'completed';
 
 const tabs: { key: TabKey; label: string; filter: (t: Task) => boolean }[] = [
   { key: 'all', label: 'All', filter: () => true },
-  { key: 'assigned', label: 'To Do', filter: (t) => t.status === 'assigned' },
+  { key: 'assigned', label: 'To Do', filter: (t) => t.status === 'assigned' || t.status === 'overdue' },
   { key: 'in_progress', label: 'In Progress', filter: (t) => t.status === 'in_progress' },
   { key: 'completed', label: 'Completed', filter: (t) => t.status === 'completed' },
 ];
@@ -20,10 +20,13 @@ const tabs: { key: TabKey; label: string; filter: (t: Task) => boolean }[] = [
 export function MyTasksList() {
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState<TabKey>('all');
+  const [actionError, setActionError] = useState('');
+  const [actionSuccess, setActionSuccess] = useState('');
 
   const { data, isLoading } = useQuery({
     queryKey: ['my-tasks'],
     queryFn: () => employeeTasksService.getMyTasks(),
+    refetchInterval: 30000, // Refetch every 30 sec to catch overdue updates from backend
   });
 
   const tasks = useMemo(() => (data || []).map(normalizeTask), [data]);
@@ -33,10 +36,30 @@ export function MyTasksList() {
     return tab ? tasks.filter(tab.filter) : tasks;
   }, [activeTab, tasks]);
 
+  const showMessage = (msg: string, type: 'success' | 'error') => {
+    if (type === 'success') {
+      setActionSuccess(msg);
+      setActionError('');
+    } else {
+      setActionError(msg);
+      setActionSuccess('');
+    }
+    setTimeout(() => {
+      setActionError('');
+      setActionSuccess('');
+    }, 4000);
+  };
+
   const startMutation = useMutation({
     mutationFn: (id: number) => employeeTasksService.startTask(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['my-tasks'] });
+      queryClient.invalidateQueries({ queryKey: ['team-tasks'] });
+      showMessage('✓ Task started — status changed to In Progress', 'success');
+    },
+    onError: (err: unknown) => {
+      const axiosErr = err as { response?: { data?: { error?: string } } };
+      showMessage(axiosErr?.response?.data?.error || 'Failed to start task. Please try again.', 'error');
     },
   });
 
@@ -44,11 +67,19 @@ export function MyTasksList() {
     mutationFn: (id: number) => employeeTasksService.completeTask(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['my-tasks'] });
+      queryClient.invalidateQueries({ queryKey: ['team-tasks'] });
+      showMessage('🎉 Task completed! Your Team Leader has been notified.', 'success');
+    },
+    onError: (err: unknown) => {
+      const axiosErr = err as { response?: { data?: { error?: string } } };
+      showMessage(axiosErr?.response?.data?.error || 'Failed to complete task. Please try again.', 'error');
     },
   });
 
   const handleTaskAction = (task: Task) => {
-    if (task.status === 'assigned') {
+    setActionError('');
+    setActionSuccess('');
+    if (task.status === 'assigned' || task.status === 'overdue') {
       startMutation.mutate(task.id);
     } else if (task.status === 'in_progress') {
       completeMutation.mutate(task.id);
@@ -62,6 +93,18 @@ export function MyTasksList() {
 
   return (
     <div>
+      {/* Toast messages */}
+      {actionSuccess && (
+        <div className="mb-4 px-4 py-2.5 bg-success-soft border border-success/20 rounded-md text-[13px] text-[#047857] font-medium">
+          {actionSuccess}
+        </div>
+      )}
+      {actionError && (
+        <div className="mb-4 px-4 py-2.5 bg-danger-soft border border-danger/20 rounded-md text-[13px] text-danger font-medium">
+          {actionError}
+        </div>
+      )}
+
       <div className="flex gap-1 mb-5 border-b border-border">
         {tabs.map((tab) => (
           <button
@@ -98,7 +141,15 @@ export function MyTasksList() {
       ) : (
         <div className="space-y-3">
           {filtered.map((task) => (
-            <EmployeeTaskCard key={task.id} task={task} onAction={handleTaskAction} />
+            <EmployeeTaskCard
+              key={task.id}
+              task={task}
+              onAction={handleTaskAction}
+              isLoading={
+                (startMutation.isPending && startMutation.variables === task.id) ||
+                (completeMutation.isPending && completeMutation.variables === task.id)
+              }
+            />
           ))}
         </div>
       )}

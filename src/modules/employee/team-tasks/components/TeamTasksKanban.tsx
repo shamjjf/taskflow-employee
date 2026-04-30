@@ -9,6 +9,7 @@ import { teamTasksService } from '../services/teamTasksService';
 import { normalizeTask } from '@/lib/normalizers';
 import { TASK_STATUS_LABELS, TASK_PRIORITY_LABELS } from '@/constants';
 import type { TaskStatus, Task, TaskPriority } from '@/types';
+import { TeamTaskDetailModal } from './TeamTaskDetailModal';
 
 const COLUMNS: TaskStatus[] = ['assigned', 'in_progress', 'completed', 'overdue'];
 
@@ -21,6 +22,7 @@ const priorityStyles = {
 export function TeamTasksKanban() {
   const [assigneeFilter, setAssigneeFilter] = useState('');
   const [priorityFilter, setPriorityFilter] = useState('');
+  const [selectedTaskId, setSelectedTaskId] = useState<number | null>(null);
 
   const { data, isLoading } = useQuery({
     queryKey: ['team-tasks'],
@@ -90,7 +92,16 @@ export function TeamTasksKanban() {
                 grouped[status].map((task) => (
                   <div
                     key={task.id}
-                    className="bg-white border border-border rounded-md p-3 mb-2 cursor-pointer transition-all hover:border-border-strong hover:shadow-sm"
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => setSelectedTaskId(task.id)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        setSelectedTaskId(task.id);
+                      }
+                    }}
+                    className="bg-white border border-border rounded-md p-3 mb-2 cursor-pointer transition-all hover:border-border-strong hover:shadow-sm focus:outline-none focus:ring-2 focus:ring-[#6366f1]/40"
                   >
                     <div className="text-[13px] font-medium mb-2 leading-snug">{task.title}</div>
                     <div className="flex gap-1.5 mb-2 flex-wrap">
@@ -119,6 +130,11 @@ export function TeamTasksKanban() {
           ))}
         </div>
       )}
+
+      <TeamTaskDetailModal
+        taskId={selectedTaskId}
+        onClose={() => setSelectedTaskId(null)}
+      />
     </>
   );
 }
