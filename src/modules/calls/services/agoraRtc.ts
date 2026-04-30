@@ -13,6 +13,7 @@ if (!APP_ID && typeof window !== 'undefined') {
 }
 
 export type CallType = 'audio' | 'video';
+type MediaType = 'audio' | 'video';
 
 export interface RemoteUser {
   uid: number;
@@ -25,8 +26,8 @@ export interface RemoteUser {
 export interface AgoraServiceCallbacks {
   onUserJoined?: (uid: number) => void;
   onUserLeft?: (uid: number) => void;
-  onUserPublished?: (user: IAgoraRTCRemoteUser, mediaType: 'audio' | 'video') => void;
-  onUserUnpublished?: (user: IAgoraRTCRemoteUser, mediaType: 'audio' | 'video') => void;
+  onUserPublished?: (user: IAgoraRTCRemoteUser, mediaType: MediaType) => void;
+  onUserUnpublished?: (user: IAgoraRTCRemoteUser, mediaType: MediaType) => void;
   onConnectionStateChange?: (state: string, prevState: string) => void;
 }
 
@@ -104,7 +105,6 @@ class AgoraRTCService {
       'disable'
     );
 
-    // createScreenVideoTrack returns a single track when audio is 'disable'
     const screenTrack: ILocalVideoTrack = Array.isArray(screenTrackResult)
       ? screenTrackResult[0]
       : screenTrackResult;
@@ -173,7 +173,7 @@ class AgoraRTCService {
 
   async subscribeToUser(
     user: IAgoraRTCRemoteUser,
-    mediaType: 'audio' | 'video'
+    mediaType: MediaType
   ): Promise<void> {
     if (!this.client) return;
     await this.client.subscribe(user, mediaType);
@@ -191,11 +191,15 @@ class AgoraRTCService {
     if (!this.client) return;
 
     this.client.on('user-published', async (user, mediaType) => {
+      // Only handle audio/video — ignore datachannel
+      if (mediaType !== 'audio' && mediaType !== 'video') return;
       await this.subscribeToUser(user, mediaType);
       this.callbacks.onUserPublished?.(user, mediaType);
     });
 
     this.client.on('user-unpublished', (user, mediaType) => {
+      // Only handle audio/video — ignore datachannel
+      if (mediaType !== 'audio' && mediaType !== 'video') return;
       this.callbacks.onUserUnpublished?.(user, mediaType);
     });
 
