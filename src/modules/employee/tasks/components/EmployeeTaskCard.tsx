@@ -1,15 +1,16 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { cn } from '@/lib/utils';
+import { cn, formatDateTime } from '@/lib/utils';
 import { Badge, Button } from '@/components/ui';
-import { Calendar, Clock, CheckCircle2, Play, MessageSquare } from 'lucide-react';
+import { Calendar, Clock, CheckCircle2, Play, MessageSquare, CalendarClock } from 'lucide-react';
 import { TASK_PRIORITY_LABELS } from '@/constants';
 import type { Task } from '@/types';
 
 interface EmployeeTaskCardProps {
   task: Task;
   onAction?: (task: Task) => void;
+  isLoading?: boolean;
 }
 
 const priorityStyles = {
@@ -22,13 +23,13 @@ const statusLabels: Record<
   string,
   { label: string; variant: 'info' | 'warning' | 'success' | 'danger' }
 > = {
-  assigned: { label: 'Assigned', variant: 'info' },
+  assigned: { label: 'To Do', variant: 'info' },
   in_progress: { label: 'In Progress', variant: 'warning' },
   completed: { label: 'Completed', variant: 'success' },
   overdue: { label: 'Overdue', variant: 'danger' },
 };
 
-export function EmployeeTaskCard({ task, onAction }: EmployeeTaskCardProps) {
+export function EmployeeTaskCard({ task, onAction, isLoading = false }: EmployeeTaskCardProps) {
   const router = useRouter();
   const status = statusLabels[task.status];
 
@@ -39,10 +40,17 @@ export function EmployeeTaskCard({ task, onAction }: EmployeeTaskCardProps) {
     onAction?.(task);
   };
 
+  const isOverdue = task.status === 'overdue';
+
   return (
     <div
       onClick={goToDetail}
-      className="bg-white border border-border rounded-lg p-5 transition-all hover:border-primary hover:shadow-md cursor-pointer"
+      className={cn(
+        'bg-white border rounded-lg p-5 transition-all cursor-pointer',
+        isOverdue
+          ? 'border-danger/30 hover:border-danger hover:shadow-md'
+          : 'border-border hover:border-primary hover:shadow-md'
+      )}
     >
       <div className="flex items-start justify-between gap-4 mb-3">
         <div className="flex-1 min-w-0">
@@ -58,7 +66,7 @@ export function EmployeeTaskCard({ task, onAction }: EmployeeTaskCardProps) {
         <Badge variant={status.variant}>{status.label}</Badge>
       </div>
 
-      <div className="flex items-center gap-2 mb-4 flex-wrap">
+      <div className="flex items-center gap-3 mb-3 flex-wrap">
         <span
           className={cn(
             'inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11.5px] font-medium border',
@@ -71,17 +79,51 @@ export function EmployeeTaskCard({ task, onAction }: EmployeeTaskCardProps) {
           <Calendar size={12} />
           <span>Due: {task.deadlineLabel}</span>
         </div>
-        {task.status === 'in_progress' && task.startedAt && (
-          <div className="flex items-center gap-1 text-[11.5px] text-[#71717a]">
-            <Clock size={12} />
-            <span>Started earlier today</span>
+      </div>
+
+      {/* Detailed timeline */}
+      <div className="grid grid-cols-3 gap-3 mb-4 pb-3 border-b border-border">
+        <div>
+          <div className="flex items-center gap-1 text-[10.5px] text-[#71717a] uppercase tracking-wider font-medium mb-0.5">
+            <CalendarClock size={11} />
+            Assigned
+          </div>
+          <div className="text-[12px] font-medium">{formatDateTime(task.createdAt)}</div>
+        </div>
+        {task.startedAt && (
+          <div>
+            <div className="flex items-center gap-1 text-[10.5px] text-[#71717a] uppercase tracking-wider font-medium mb-0.5">
+              <Play size={10} />
+              Started
+            </div>
+            <div className="text-[12px] font-medium">{formatDateTime(task.startedAt)}</div>
+          </div>
+        )}
+        {task.completedAt && (
+          <div>
+            <div className="flex items-center gap-1 text-[10.5px] text-[#71717a] uppercase tracking-wider font-medium mb-0.5">
+              <CheckCircle2 size={10} />
+              Completed
+            </div>
+            <div className="text-[12px] font-medium text-success">{formatDateTime(task.completedAt)}</div>
+          </div>
+        )}
+        {!task.startedAt && !task.completedAt && task.deadline && (
+          <div>
+            <div className="flex items-center gap-1 text-[10.5px] text-[#71717a] uppercase tracking-wider font-medium mb-0.5">
+              <Clock size={11} />
+              Deadline
+            </div>
+            <div className={cn('text-[12px] font-medium', isOverdue && 'text-danger')}>
+              {formatDateTime(task.deadline)}
+            </div>
           </div>
         )}
       </div>
 
-      <div className="flex items-center justify-between pt-3 border-t border-border">
+      <div className="flex items-center justify-between">
         <div className="text-[11.5px] text-[#71717a]">
-          Click anywhere to view & comment
+          {task.createdByName ? `Assigned by ${task.createdByName}` : 'Click to view & comment'}
         </div>
         <div className="flex gap-2">
           <Button
@@ -95,16 +137,16 @@ export function EmployeeTaskCard({ task, onAction }: EmployeeTaskCardProps) {
             <MessageSquare size={12} />
             View & Comment
           </Button>
-          {task.status === 'assigned' && (
-            <Button variant="primary" size="sm" onClick={handleActionClick}>
+          {(task.status === 'assigned' || task.status === 'overdue') && (
+            <Button variant="primary" size="sm" onClick={handleActionClick} disabled={isLoading}>
               <Play size={12} strokeWidth={2.5} />
-              Start Task
+              {isLoading ? 'Starting...' : 'Start Task'}
             </Button>
           )}
           {task.status === 'in_progress' && (
-            <Button variant="primary" size="sm" onClick={handleActionClick}>
+            <Button variant="primary" size="sm" onClick={handleActionClick} disabled={isLoading}>
               <CheckCircle2 size={12} strokeWidth={2.5} />
-              Mark Complete
+              {isLoading ? 'Completing...' : 'Mark Complete'}
             </Button>
           )}
         </div>
