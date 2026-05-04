@@ -10,11 +10,14 @@ class SocketClient {
 
     this.socket = io(SOCKET_URL, {
       auth: { token },
-      transports: ['websocket'],
+      // Use both transports — websocket preferred, polling fallback for proxies
+      transports: ['websocket', 'polling'],
       autoConnect: true,
       reconnection: true,
-      reconnectionAttempts: 5,
+      reconnectionAttempts: 10,
       reconnectionDelay: 1000,
+      reconnectionDelayMax: 5000,
+      timeout: 20000,
     });
 
     this.socket.on('connect', () => {
@@ -29,6 +32,10 @@ class SocketClient {
       console.error('[Socket] Connection error:', err.message);
     });
 
+    this.socket.on('reconnect', (attempt) => {
+      console.log('[Socket] Reconnected after', attempt, 'attempts');
+    });
+
     return this.socket;
   }
 
@@ -38,7 +45,7 @@ class SocketClient {
   }
 
   on<T = unknown>(event: string, handler: (data: T) => void) {
-    this.socket?.on(event, handler);
+    this.socket?.on(event, handler as (...args: unknown[]) => void);
   }
 
   off(event: string, handler?: (...args: unknown[]) => void) {
@@ -51,6 +58,10 @@ class SocketClient {
 
   getSocket() {
     return this.socket;
+  }
+
+  isConnected() {
+    return this.socket?.connected ?? false;
   }
 }
 
