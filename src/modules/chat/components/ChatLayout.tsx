@@ -11,6 +11,7 @@ import { uploadService, type UploadedFile } from '@/lib/uploadService';
 import { useAuthStore } from '@/store/authStore';
 import { api } from '@/lib/api';
 import { socketClient } from '@/lib/socket';
+import { useAgoraCall } from '@/modules/calls/hooks/useAgoraCall';
 import type { ApiResponse, Message } from '@/types';
 
 const colorForId = (id: number) => {
@@ -29,6 +30,7 @@ interface DeptUser {
 export function ChatLayout() {
   const queryClient = useQueryClient();
   const currentUser = useAuthStore((s) => s.user);
+  const { startCall, status: callStatus } = useAgoraCall();
   const [activeId, setActiveId] = useState<number | null>(null);
   const [input, setInput] = useState('');
   const [sending, setSending] = useState(false);
@@ -197,6 +199,50 @@ export function ChatLayout() {
     }
   };
 
+  // ============ CALL: derive other participant + start call ============
+  const otherUser = useMemo(() => {
+    if (!activeConv || activeConv.type !== 'direct') return null;
+    const participants =
+      (activeConv as unknown as {
+        participants?: Array<{ userId: number; user?: { id: number; name: string; email?: string } }>;
+      }).participants || [];
+    const other = participants.find((p) => p.userId !== currentUser?.id);
+    return other?.user || null;
+  }, [activeConv, currentUser?.id]);
+
+  const handleStartCall = async (callType: 'audio' | 'video') => {
+    if (!activeId || !activeConv) return;
+    if (!otherUser) {
+      alert('Calls only work in direct (1-on-1) chats. Start a direct conversation first.');
+      return;
+    }
+    if (callStatus !== 'idle') {
+      alert('You already have an active call.');
+      return;
+    }
+    try {
+      await startCall({
+        conversationId: activeId,
+        callType,
+        participants: [
+          {
+            id: otherUser.id,
+            name: otherUser.name,
+            email: otherUser.email,
+          },
+        ],
+      });
+    } catch (err) {
+      const axiosErr = err as { response?: { data?: { error?: string } }; message?: string };
+      alert(
+        axiosErr?.response?.data?.error ||
+          axiosErr?.message ||
+          'Could not start call. Please check your microphone/camera permissions.'
+      );
+    }
+  };
+  // =====================================================================
+
   return (
     <>
       <div className="grid grid-cols-[280px_1fr] h-[calc(100vh-140px)] bg-white border border-border rounded-lg overflow-hidden">
@@ -277,10 +323,20 @@ export function ChatLayout() {
                   <div className="text-[11.5px] text-success">● Active</div>
                 </div>
                 <div className="ml-auto flex gap-1.5">
-                  <button className="w-[34px] h-[34px] rounded-md flex items-center justify-center text-[#71717a] hover:bg-surface-muted hover:text-[#18181b]">
+                  <button
+                    onClick={() => handleStartCall('audio')}
+                    disabled={!otherUser || callStatus !== 'idle'}
+                    className="w-[34px] h-[34px] rounded-md flex items-center justify-center text-[#71717a] hover:bg-surface-muted hover:text-[#18181b] disabled:opacity-40 disabled:cursor-not-allowed"
+                    title={otherUser ? 'Audio call' : 'Audio call (only in direct chats)'}
+                  >
                     <Phone size={16} />
                   </button>
-                  <button className="w-[34px] h-[34px] rounded-md flex items-center justify-center text-[#71717a] hover:bg-surface-muted hover:text-[#18181b]">
+                  <button
+                    onClick={() => handleStartCall('video')}
+                    disabled={!otherUser || callStatus !== 'idle'}
+                    className="w-[34px] h-[34px] rounded-md flex items-center justify-center text-[#71717a] hover:bg-surface-muted hover:text-[#18181b] disabled:opacity-40 disabled:cursor-not-allowed"
+                    title={otherUser ? 'Video call' : 'Video call (only in direct chats)'}
+                  >
                     <Video size={16} />
                   </button>
                 </div>
