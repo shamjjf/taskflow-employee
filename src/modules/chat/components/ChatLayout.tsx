@@ -10,8 +10,9 @@ import { chatService } from '../services/chatService';
 import { uploadService, type UploadedFile } from '@/lib/uploadService';
 import { useAuthStore } from '@/store/authStore';
 import { api } from '@/lib/api';
-import type { ApiResponse } from '@/types';
+import { socketClient } from '@/lib/socket';
 import { useAgoraCall } from '@/modules/calls/hooks/useAgoraCall';
+import type { ApiResponse, Message } from '@/types';
 
 const colorForId = (id: number) => {
   const palette = ['#5b5bd6', '#3b82f6', '#10b981', '#8b5cf6', '#ec4899', '#f59e0b', '#f97316'];
@@ -24,12 +25,6 @@ interface DeptUser {
   email: string;
   role: 'super_admin' | 'team_leader' | 'employee';
   designation?: string;
-}
-
-/** Conversation participant info (sent by backend) */
-interface ConversationParticipant {
-  userId: number;
-  user?: { id: number; name: string; email?: string };
 }
 
 export function ChatLayout() {
@@ -46,7 +41,6 @@ export function ChatLayout() {
   const [memberSearch, setMemberSearch] = useState('');
   const [chatSearch, setChatSearch] = useState('');
   const [startingChatWithId, setStartingChatWithId] = useState<number | null>(null);
-  const [callStarting, setCallStarting] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -55,7 +49,6 @@ export function ChatLayout() {
     queryFn: () => chatService.listConversations(),
   });
 
-  // Department members for "New Chat" modal
   const { data: departmentMembers } = useQuery({
     queryKey: ['department-members', currentUser?.departmentId],
     queryFn: async () => {
@@ -80,6 +73,53 @@ export function ChatLayout() {
     enabled: activeId !== null,
   });
 
+  // ============ REAL-TIME SOCKET INTEGRATION ============
+  // Connect socket on mount + ensure connection
+  useEffect(() => {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('access_token') : null;
+    if (!token) return;
+    const socket = socketClient.connect(token);
+    return () => {
+      // Don't disconnect on unmount — keep socket alive across pages
+    };
+  }, []);
+
+  // Join conversation room when active conversation changes
+  useEffect(() => {
+    if (!activeId) return;
+    socketClient.emit('chat:join', activeId);
+    return () => {
+      socketClient.emit('chat:leave', activeId);
+    };
+  }, [activeId]);
+
+  // Listen to incoming messages
+  useEffect(() => {
+    const handleNewMessage = (data: Message & { conversationId?: number }) => {
+      const convId = (data as { conversationId?: number }).conversationId;
+      // If the message arrives for the currently open conversation,
+      // optimistically update the messages cache so the UI shows it instantly.
+      if (convId && convId === activeId) {
+        queryClient.setQueryData<Message[]>(['messages', convId], (old = []) => {
+          // Avoid duplicates if the sender already added it locally
+          if (old.some((m) => m.id === data.id)) return old;
+          return [...old, data];
+        });
+      } else if (convId) {
+        // Background conversation: just refetch its messages and update conv list
+        queryClient.invalidateQueries({ queryKey: ['messages', convId] });
+      }
+      // Always refresh conversation list so latest message preview updates
+      queryClient.invalidateQueries({ queryKey: ['conversations'] });
+    };
+
+    socketClient.on('message:new', handleNewMessage);
+    return () => {
+      socketClient.off('message:new', handleNewMessage as (...args: unknown[]) => void);
+    };
+  }, [activeId, queryClient]);
+  // =======================================================
+
   const filteredConversations = useMemo(() => {
     if (!conversations) return [];
     if (!chatSearch.trim()) return conversations;
@@ -91,20 +131,6 @@ export function ChatLayout() {
     () => conversations?.find((c) => c.id === activeId),
     [conversations, activeId]
   );
-
-  /** Extract other participants (excluding self) for calling */
-  const otherParticipants = useMemo(() => {
-    if (!activeConv || !currentUser) return [];
-    const participants =
-      (activeConv as unknown as { participants?: ConversationParticipant[] }).participants || [];
-    return participants
-      .filter((p) => p.userId !== currentUser.id)
-      .map((p) => ({
-        id: p.userId,
-        name: p.user?.name || `User ${p.userId}`,
-        email: p.user?.email,
-      }));
-  }, [activeConv, currentUser]);
 
   const filteredMembers = useMemo(() => {
     if (!departmentMembers) return [];
@@ -165,41 +191,57 @@ export function ChatLayout() {
       setInput('');
       setAttachment(null);
       setUploadError('');
-      queryClient.invalidateQueries({ queryKey: ['messages', activeId] });
+      // Socket will deliver the message back via 'message:new' event,
+      // but invalidate conversations to update the sidebar preview.
       queryClient.invalidateQueries({ queryKey: ['conversations'] });
     } finally {
       setSending(false);
     }
   };
 
-  /** Start an audio or video call with everyone in the active conversation */
-  const handleStartCall = async (callType: 'audio' | 'video') => {
-    if (!activeConv || otherParticipants.length === 0 || callStarting) return;
-    if (callStatus !== 'idle' && callStatus !== 'ended') return;
+  // ============ CALL: derive other participant + start call ============
+  const otherUser = useMemo(() => {
+    if (!activeConv || activeConv.type !== 'direct') return null;
+    const participants =
+      (activeConv as unknown as {
+        participants?: Array<{ userId: number; user?: { id: number; name: string; email?: string } }>;
+      }).participants || [];
+    const other = participants.find((p) => p.userId !== currentUser?.id);
+    return other?.user || null;
+  }, [activeConv, currentUser?.id]);
 
-    setCallStarting(true);
+  const handleStartCall = async (callType: 'audio' | 'video') => {
+    if (!activeId || !activeConv) return;
+    if (!otherUser) {
+      alert('Calls only work in direct (1-on-1) chats. Start a direct conversation first.');
+      return;
+    }
+    if (callStatus !== 'idle') {
+      alert('You already have an active call.');
+      return;
+    }
     try {
       await startCall({
-        conversationId: activeConv.id,
+        conversationId: activeId,
         callType,
         participants: [
-          { id: currentUser!.id, name: currentUser!.name },
-          ...otherParticipants,
+          {
+            id: otherUser.id,
+            name: otherUser.name,
+            email: otherUser.email,
+          },
         ],
       });
     } catch (err) {
-      const axiosErr = err as { response?: { data?: { error?: string } } };
-      alert(axiosErr?.response?.data?.error || 'Could not start call.');
-    } finally {
-      setCallStarting(false);
+      const axiosErr = err as { response?: { data?: { error?: string } }; message?: string };
+      alert(
+        axiosErr?.response?.data?.error ||
+          axiosErr?.message ||
+          'Could not start call. Please check your microphone/camera permissions.'
+      );
     }
   };
-
-  const callDisabled =
-    !activeConv ||
-    otherParticipants.length === 0 ||
-    callStarting ||
-    (callStatus !== 'idle' && callStatus !== 'ended');
+  // =====================================================================
 
   return (
     <>
@@ -283,17 +325,17 @@ export function ChatLayout() {
                 <div className="ml-auto flex gap-1.5">
                   <button
                     onClick={() => handleStartCall('audio')}
-                    disabled={callDisabled}
-                    title={callDisabled ? 'No one to call' : 'Start voice call'}
-                    className="w-[34px] h-[34px] rounded-md flex items-center justify-center text-[#71717a] hover:bg-surface-muted hover:text-[#18181b] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                    disabled={!otherUser || callStatus !== 'idle'}
+                    className="w-[34px] h-[34px] rounded-md flex items-center justify-center text-[#71717a] hover:bg-surface-muted hover:text-[#18181b] disabled:opacity-40 disabled:cursor-not-allowed"
+                    title={otherUser ? 'Audio call' : 'Audio call (only in direct chats)'}
                   >
                     <Phone size={16} />
                   </button>
                   <button
                     onClick={() => handleStartCall('video')}
-                    disabled={callDisabled}
-                    title={callDisabled ? 'No one to call' : 'Start video call'}
-                    className="w-[34px] h-[34px] rounded-md flex items-center justify-center text-[#71717a] hover:bg-surface-muted hover:text-[#18181b] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                    disabled={!otherUser || callStatus !== 'idle'}
+                    className="w-[34px] h-[34px] rounded-md flex items-center justify-center text-[#71717a] hover:bg-surface-muted hover:text-[#18181b] disabled:opacity-40 disabled:cursor-not-allowed"
+                    title={otherUser ? 'Video call' : 'Video call (only in direct chats)'}
                   >
                     <Video size={16} />
                   </button>
@@ -418,7 +460,6 @@ export function ChatLayout() {
         </div>
       </div>
 
-      {/* New Chat Modal */}
       <Modal
         isOpen={showNewChatModal}
         onClose={() => {
