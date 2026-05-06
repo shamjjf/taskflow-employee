@@ -8,12 +8,13 @@ import { employeeTasksService } from '../services/employeeTasksService';
 import { normalizeTask } from '@/lib/normalizers';
 import type { Task } from '@/types';
 
-type TabKey = 'all' | 'assigned' | 'in_progress' | 'completed';
+type TabKey = 'all' | 'assigned' | 'in_progress' | 'in_review' | 'completed';
 
 const tabs: { key: TabKey; label: string; filter: (t: Task) => boolean }[] = [
   { key: 'all', label: 'All', filter: () => true },
   { key: 'assigned', label: 'To Do', filter: (t) => t.status === 'assigned' || t.status === 'overdue' },
   { key: 'in_progress', label: 'In Progress', filter: (t) => t.status === 'in_progress' },
+  { key: 'in_review', label: 'In Review', filter: (t) => t.status === 'in_review' },
   { key: 'completed', label: 'Completed', filter: (t) => t.status === 'completed' },
 ];
 
@@ -89,6 +90,33 @@ export function MyTasksList() {
     },
   });
 
+  const acceptMutation = useMutation({
+    mutationFn: (id: number) => employeeTasksService.completeTask(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['my-tasks'] });
+      queryClient.invalidateQueries({ queryKey: ['team-tasks'] });
+      showMessage('✓ Task accepted and marked as completed.', 'success');
+    },
+    onError: (err: unknown) => {
+      const axiosErr = err as { response?: { data?: { error?: string } } };
+      showMessage(axiosErr?.response?.data?.error || 'Failed to accept task. Please try again.', 'error');
+    },
+  });
+
+  const rejectMutation = useMutation({
+    mutationFn: ({ id, reason }: { id: number; reason: string }) =>
+      employeeTasksService.rejectTask(id, reason),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['my-tasks'] });
+      queryClient.invalidateQueries({ queryKey: ['team-tasks'] });
+      showMessage('↺ Task sent back to In Progress with your feedback.', 'success');
+    },
+    onError: (err: unknown) => {
+      const axiosErr = err as { response?: { data?: { error?: string } } };
+      showMessage(axiosErr?.response?.data?.error || 'Failed to reject task. Please try again.', 'error');
+    },
+  });
+
   const handleTaskAction = (task: Task) => {
     setActionError('');
     setActionSuccess('');
@@ -97,6 +125,18 @@ export function MyTasksList() {
     } else if (task.status === 'in_progress') {
       reviewMutation.mutate(task.id);
     }
+  };
+
+  const handleAccept = (task: Task) => {
+    setActionError('');
+    setActionSuccess('');
+    acceptMutation.mutate(task.id);
+  };
+
+  const handleReject = (task: Task, reason: string) => {
+    setActionError('');
+    setActionSuccess('');
+    rejectMutation.mutate({ id: task.id, reason });
   };
 
   const getCount = (key: TabKey) => {
@@ -158,10 +198,15 @@ export function MyTasksList() {
               key={task.id}
               task={task}
               onAction={handleTaskAction}
+              onAccept={handleAccept}
+              onReject={handleReject}
               isLoading={
                 (startMutation.isPending && startMutation.variables === task.id) ||
-                (completeMutation.isPending && completeMutation.variables === task.id)
+                (completeMutation.isPending && completeMutation.variables === task.id) ||
+                (reviewMutation.isPending && reviewMutation.variables === task.id)
               }
+              isAccepting={acceptMutation.isPending && acceptMutation.variables === task.id}
+              isRejecting={rejectMutation.isPending && rejectMutation.variables?.id === task.id}
             />
           ))}
         </div>

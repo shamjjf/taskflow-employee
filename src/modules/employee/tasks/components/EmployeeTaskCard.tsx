@@ -3,14 +3,19 @@
 import { useRouter } from 'next/navigation';
 import { cn, formatDateTime } from '@/lib/utils';
 import { Badge, Button } from '@/components/ui';
-import { Calendar, Clock, CheckCircle2, Play, MessageSquare, CalendarClock } from 'lucide-react';
+import { Calendar, Clock, CheckCircle2, Play, MessageSquare, CalendarClock, X } from 'lucide-react';
 import { TASK_PRIORITY_LABELS } from '@/constants';
 import type { Task } from '@/types';
+import { useRole } from '@/hooks/useRole';
 
 interface EmployeeTaskCardProps {
   task: Task;
   onAction?: (task: Task) => void;
+  onAccept?: (task: Task) => void;
+  onReject?: (task: Task, reason: string) => void;
   isLoading?: boolean;
+  isAccepting?: boolean;
+  isRejecting?: boolean;
 }
 
 const priorityStyles = {
@@ -30,8 +35,17 @@ const statusLabels: Record<
   overdue: { label: 'Overdue', variant: 'danger' },
 };
 
-export function EmployeeTaskCard({ task, onAction, isLoading = false }: EmployeeTaskCardProps) {
+export function EmployeeTaskCard({
+  task,
+  onAction,
+  onAccept,
+  onReject,
+  isLoading = false,
+  isAccepting = false,
+  isRejecting = false,
+}: EmployeeTaskCardProps) {
   const router = useRouter();
+  const { isTeamLeader } = useRole();
   const status = statusLabels[task.status];
 
   const goToDetail = () => router.push(`/task/${task.id}`);
@@ -39,6 +53,19 @@ export function EmployeeTaskCard({ task, onAction, isLoading = false }: Employee
   const handleActionClick = (e: React.MouseEvent) => {
     e.stopPropagation();
     onAction?.(task);
+  };
+
+  const handleAcceptClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    onAccept?.(task);
+  };
+
+  const handleRejectClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const reason = window.prompt('Reason for sending this task back:');
+    if (reason && reason.trim()) {
+      onReject?.(task, reason.trim());
+    }
   };
 
   const isOverdue = task.status === 'overdue';
@@ -138,23 +165,50 @@ export function EmployeeTaskCard({ task, onAction, isLoading = false }: Employee
             <MessageSquare size={12} />
             View & Comment
           </Button>
-          {(task.status === 'assigned' || task.status === 'overdue') && (
-            <Button variant="primary" size="sm" onClick={handleActionClick} disabled={isLoading}>
-              <Play size={12} strokeWidth={2.5} />
-              {isLoading ? 'Starting...' : 'Start Task'}
-            </Button>
-          )}
-          {task.status === 'in_progress' && (
-            <Button variant="primary" size="sm" onClick={handleActionClick} disabled={isLoading}>
-              <CheckCircle2 size={12} strokeWidth={2.5} />
-              {isLoading ? 'Completing...' : 'Mark Complete'}
-            </Button>
-          )}
-          {task.status === 'in_review' && (
-            <Button variant="primary" size="sm" disabled={true}>
-              <CheckCircle2 size={12} strokeWidth={2.5} />
-              {'Under review'}
-            </Button>
+          {isTeamLeader ? (
+            task.status === 'in_review' && (
+              <>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={handleRejectClick}
+                  disabled={isRejecting || isAccepting}
+                >
+                  <X size={12} strokeWidth={2.5} />
+                  {isRejecting ? 'Sending back...' : 'Reject'}
+                </Button>
+                <Button
+                  variant="primary"
+                  size="sm"
+                  onClick={handleAcceptClick}
+                  disabled={isAccepting || isRejecting}
+                >
+                  <CheckCircle2 size={12} strokeWidth={2.5} />
+                  {isAccepting ? 'Accepting...' : 'Accept'}
+                </Button>
+              </>
+            )
+          ) : (
+            <>
+              {(task.status === 'assigned' || task.status === 'overdue') && (
+                <Button variant="primary" size="sm" onClick={handleActionClick} disabled={isLoading}>
+                  <Play size={12} strokeWidth={2.5} />
+                  {isLoading ? 'Starting...' : 'Start Task'}
+                </Button>
+              )}
+              {task.status === 'in_progress' && (
+                <Button variant="primary" size="sm" onClick={handleActionClick} disabled={isLoading}>
+                  <CheckCircle2 size={12} strokeWidth={2.5} />
+                  {isLoading ? 'Completing...' : 'Mark Complete'}
+                </Button>
+              )}
+              {task.status === 'in_review' && (
+                <Button variant="primary" size="sm" disabled={true}>
+                  <CheckCircle2 size={12} strokeWidth={2.5} />
+                  {'Under review'}
+                </Button>
+              )}
+            </>
           )}
         </div>
       </div>

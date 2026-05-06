@@ -11,7 +11,7 @@ import { TASK_STATUS_LABELS, TASK_PRIORITY_LABELS } from '@/constants';
 import type { TaskStatus, Task, TaskPriority } from '@/types';
 import { TeamTaskDetailModal } from './TeamTaskDetailModal';
 
-const COLUMNS: TaskStatus[] = ['assigned', 'in_progress', 'completed', 'overdue'];
+const COLUMNS: TaskStatus[] = ['assigned', 'in_progress', 'in_review', 'completed', 'overdue'];
 
 const priorityStyles = {
   high: 'text-[#dc2626] bg-[#fef2f2]',
@@ -43,6 +43,7 @@ export function TeamTasksKanban() {
     const groups: Record<TaskStatus, Task[]> = {
       assigned: [],
       in_progress: [],
+      in_review: [],
       completed: [],
       overdue: [],
     };
@@ -77,7 +78,7 @@ export function TeamTasksKanban() {
       {isLoading ? (
         <div className="text-center py-12 text-[#71717a]">Loading team tasks...</div>
       ) : (
-        <div className="grid grid-cols-4 gap-3.5">
+        <div className="grid grid-cols-5 gap-3.5">
           {COLUMNS.map((status) => (
             <div key={status} className="bg-surface-muted rounded-lg p-3 min-h-[400px]">
               <div className="flex items-center justify-between px-1.5 pb-3 text-[12.5px] font-semibold text-[#71717a] uppercase tracking-wider">

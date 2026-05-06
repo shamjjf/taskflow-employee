@@ -87,6 +87,7 @@ export const TASK_PRIORITY_LABELS = {
 export const TASK_STATUS_LABELS = {
   assigned: 'Assigned',
   in_progress: 'In Progress',
+  in_review: 'In Review',
   completed: 'Completed',
   overdue: 'Overdue',
 } as const;

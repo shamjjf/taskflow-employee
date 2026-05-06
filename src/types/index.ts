@@ -33,7 +33,7 @@ export interface Department {
   createdAt: string;
 }
 
-export type TaskStatus = 'assigned' | 'in_progress' | 'completed' | 'overdue';
+export type TaskStatus = 'assigned' | 'in_progress' | 'in_review' | 'completed' | 'overdue';
 export type TaskPriority = 'low' | 'medium' | 'high';
 
 export interface TaskAssignee {

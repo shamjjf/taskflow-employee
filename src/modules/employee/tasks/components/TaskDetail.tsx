@@ -39,6 +39,7 @@ const statusLabels: Record<
 > = {
   assigned: { label: 'Assigned', variant: 'info' },
   in_progress: { label: 'In Progress', variant: 'warning' },
+  in_review: { label: 'In Review', variant: 'info' },
   completed: { label: 'Completed', variant: 'success' },
   overdue: { label: 'Overdue', variant: 'danger' },
 };
