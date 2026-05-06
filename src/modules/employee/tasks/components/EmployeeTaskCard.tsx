@@ -25,6 +25,7 @@ const statusLabels: Record<
 > = {
   assigned: { label: 'To Do', variant: 'info' },
   in_progress: { label: 'In Progress', variant: 'warning' },
+  in_review: { label: 'In Review', variant: 'info' },
   completed: { label: 'Completed', variant: 'success' },
   overdue: { label: 'Overdue', variant: 'danger' },
 };
@@ -147,6 +148,12 @@ export function EmployeeTaskCard({ task, onAction, isLoading = false }: Employee
             <Button variant="primary" size="sm" onClick={handleActionClick} disabled={isLoading}>
               <CheckCircle2 size={12} strokeWidth={2.5} />
               {isLoading ? 'Completing...' : 'Mark Complete'}
+            </Button>
+          )}
+          {task.status === 'in_review' && (
+            <Button variant="primary" size="sm" disabled={true}>
+              <CheckCircle2 size={12} strokeWidth={2.5} />
+              {'Under review'}
             </Button>
           )}
         </div>

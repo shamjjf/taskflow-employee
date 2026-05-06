@@ -22,6 +22,11 @@ export const employeeTasksService = {
     return res.data;
   },
 
+  async reviewTask(id: number): Promise<Task> {
+    const res = await api.put<ApiResponse<Task>>(`/tasks/${id}/review`);
+    return res.data;
+  },
+
   async getComments(taskId: number): Promise<TaskComment[]> {
     const res = await api.get<ApiResponse<TaskComment[]>>(`/tasks/${taskId}/comments`);
     return res.data;

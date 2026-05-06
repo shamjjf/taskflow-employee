@@ -76,13 +76,26 @@ export function MyTasksList() {
     },
   });
 
+  const reviewMutation = useMutation({
+    mutationFn: (id: number) => employeeTasksService.reviewTask(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['my-tasks'] });
+      queryClient.invalidateQueries({ queryKey: ['team-tasks'] });
+      showMessage('🎉 Task completed! Your Team Leader has been notified.', 'success');
+    },
+    onError: (err: unknown) => {
+      const axiosErr = err as { response?: { data?: { error?: string } } };
+      showMessage(axiosErr?.response?.data?.error || 'Failed to complete task. Please try again.', 'error');
+    },
+  });
+
   const handleTaskAction = (task: Task) => {
     setActionError('');
     setActionSuccess('');
     if (task.status === 'assigned' || task.status === 'overdue') {
       startMutation.mutate(task.id);
     } else if (task.status === 'in_progress') {
-      completeMutation.mutate(task.id);
+      reviewMutation.mutate(task.id);
     }
   };
 
