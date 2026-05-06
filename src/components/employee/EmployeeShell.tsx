@@ -33,7 +33,7 @@ export function EmployeeShell({ children }: EmployeeShellProps) {
         <EmployeeTopbar />
         <main className="flex-1 px-8 py-7 overflow-y-auto">{children}</main>
       </div>
-      {isTeamLeader && <AssignTaskModal />}
+      <AssignTaskModal />
 
       {/* Mounts incoming call popup + active call window globally (browser only) */}
       <CallProvider />

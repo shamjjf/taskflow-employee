@@ -32,10 +32,11 @@ export default function EmployeeDashboardPage() {
         }
         action={
           isTeamLeader ? (
-            <Button variant="primary" onClick={openTaskModal}>
-              <Plus size={14} strokeWidth={2.5} />
-              Assign Task
-            </Button>
+            // <Button variant="primary" onClick={openTaskModal}>
+            //   <Plus size={14} strokeWidth={2.5} />
+            //   Assign Task
+            // </Button>
+            <></>
           ) : (
             <Button variant="primary" onClick={() => router.push('/submit-report')}>
               <FilePlus size={14} />
