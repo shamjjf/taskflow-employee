@@ -1,6 +1,20 @@
 import { api } from '@/lib/api';
 import type { Conversation, Message, ApiResponse } from '@/types';
 
+interface GroupChatMember {
+  id: number;
+  userId: number;
+  user: {
+    id: number;
+    name: string;
+    email: string;
+    role: string;
+    designation?: string;
+    profileImage?: string;
+  };
+  joinedAt: string;
+}
+
 export const chatService = {
   async listConversations(): Promise<Conversation[]> {
     const res = await api.get<ApiResponse<Conversation[]>>('/conversations');
@@ -55,5 +69,39 @@ export const chatService = {
 
   async markRead(conversationId: number) {
     await api.put(`/conversations/${conversationId}/read`);
+  },
+
+  // ============ DEPARTMENT GROUP CHAT METHODS ============
+
+  async getDepartmentGroupChat(departmentId: number): Promise<Conversation | null> {
+    try {
+      const res = await api.get<ApiResponse<Conversation>>(
+        `/conversations/department/${departmentId}/group-chat`
+      );
+      return res.data;
+    } catch (err) {
+      return null;
+    }
+  },
+
+  async getDepartmentGroupMembers(conversationId: number): Promise<GroupChatMember[]> {
+    const res = await api.get<ApiResponse<GroupChatMember[]>>(`/conversations/${conversationId}/members`);
+    return res.data;
+  },
+
+  async addMemberToDepartmentGroup(conversationId: number, userId: number) {
+    const res = await api.post<ApiResponse<GroupChatMember>>(
+      `/conversations/${conversationId}/members/add`,
+      { userId }
+    );
+    return res.data;
+  },
+
+  async removeMemberFromDepartmentGroup(conversationId: number, userId: number) {
+    const res = await api.post<ApiResponse<{ success: boolean }>>(
+      `/conversations/${conversationId}/members/remove`,
+      { userId }
+    );
+    return res.data;
   },
 };

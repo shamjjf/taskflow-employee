@@ -4,9 +4,10 @@ import { useState, useMemo, useEffect, useRef } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Avatar, Button, Modal } from '@/components/ui';
 import { AttachmentChip } from '@/components/shared';
-import { Search, Phone, Video, Paperclip, Send, Plus } from 'lucide-react';
+import { Search, Phone, Video, Paperclip, Send, Plus, Users } from 'lucide-react';
 import { cn, getInitials } from '@/lib/utils';
 import { chatService } from '../services/chatService';
+import { DepartmentGroupChatManager } from './DepartmentGroupChatManager';
 import { uploadService, type UploadedFile } from '@/lib/uploadService';
 import { useAuthStore } from '@/store/authStore';
 import { api } from '@/lib/api';
@@ -38,6 +39,7 @@ export function ChatLayout() {
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState('');
   const [showNewChatModal, setShowNewChatModal] = useState(false);
+  const [showGroupChatManager, setShowGroupChatManager] = useState(false);
   const [memberSearch, setMemberSearch] = useState('');
   const [chatSearch, setChatSearch] = useState('');
   const [startingChatWithId, setStartingChatWithId] = useState<number | null>(null);
@@ -47,6 +49,15 @@ export function ChatLayout() {
   const { data: conversations, isLoading: loadingConvs } = useQuery({
     queryKey: ['conversations'],
     queryFn: () => chatService.listConversations(),
+  });
+
+  const { data: departmentGroupChat } = useQuery({
+    queryKey: ['departmentGroupChat', currentUser?.departmentId],
+    queryFn: async () => {
+      if (!currentUser?.departmentId) return null;
+      return chatService.getDepartmentGroupChat(currentUser.departmentId);
+    },
+    enabled: !!currentUser?.departmentId,
   });
 
   const { data: departmentMembers } = useQuery({
@@ -323,22 +334,35 @@ export function ChatLayout() {
                   <div className="text-[11.5px] text-success">● Active</div>
                 </div>
                 <div className="ml-auto flex gap-1.5">
-                  <button
-                    onClick={() => handleStartCall('audio')}
-                    disabled={!otherUser || callStatus !== 'idle'}
-                    className="w-[34px] h-[34px] rounded-md flex items-center justify-center text-[#71717a] hover:bg-surface-muted hover:text-[#18181b] disabled:opacity-40 disabled:cursor-not-allowed"
-                    title={otherUser ? 'Audio call' : 'Audio call (only in direct chats)'}
-                  >
-                    <Phone size={16} />
-                  </button>
-                  <button
-                    onClick={() => handleStartCall('video')}
-                    disabled={!otherUser || callStatus !== 'idle'}
-                    className="w-[34px] h-[34px] rounded-md flex items-center justify-center text-[#71717a] hover:bg-surface-muted hover:text-[#18181b] disabled:opacity-40 disabled:cursor-not-allowed"
-                    title={otherUser ? 'Video call' : 'Video call (only in direct chats)'}
-                  >
-                    <Video size={16} />
-                  </button>
+                  {activeConv.type === 'group' ? (
+                    <button
+                      onClick={() => setShowGroupChatManager(true)}
+                      disabled={!departmentGroupChat || activeId !== departmentGroupChat.id}
+                      className="w-[34px] h-[34px] rounded-md flex items-center justify-center text-[#71717a] hover:bg-surface-muted hover:text-[#18181b] disabled:opacity-40 disabled:cursor-not-allowed"
+                      title="Manage members"
+                    >
+                      <Users size={16} />
+                    </button>
+                  ) : (
+                    <>
+                      <button
+                        onClick={() => handleStartCall('audio')}
+                        disabled={!otherUser || callStatus !== 'idle'}
+                        className="w-[34px] h-[34px] rounded-md flex items-center justify-center text-[#71717a] hover:bg-surface-muted hover:text-[#18181b] disabled:opacity-40 disabled:cursor-not-allowed"
+                        title={otherUser ? 'Audio call' : 'Audio call (only in direct chats)'}
+                      >
+                        <Phone size={16} />
+                      </button>
+                      <button
+                        onClick={() => handleStartCall('video')}
+                        disabled={!otherUser || callStatus !== 'idle'}
+                        className="w-[34px] h-[34px] rounded-md flex items-center justify-center text-[#71717a] hover:bg-surface-muted hover:text-[#18181b] disabled:opacity-40 disabled:cursor-not-allowed"
+                        title={otherUser ? 'Video call' : 'Video call (only in direct chats)'}
+                      >
+                        <Video size={16} />
+                      </button>
+                    </>
+                  )}
                 </div>
               </>
             ) : (
@@ -522,6 +546,15 @@ export function ChatLayout() {
           </div>
         </div>
       </Modal>
+
+      {departmentGroupChat && (
+        <DepartmentGroupChatManager
+          conversationId={departmentGroupChat.id}
+          departmentId={currentUser?.departmentId || 0}
+          isOpen={showGroupChatManager}
+          onClose={() => setShowGroupChatManager(false)}
+        />
+      )}
     </>
   );
 }
