@@ -22,23 +22,27 @@ interface IncomingCallPayload {
   conversationId: number;
   channelName: string;
   callType: CallType;
-  caller: { id: number; email: string };
+  isGroup?: boolean;
+  caller: { id: number; name?: string; email: string; profileImage?: string };
   startedAt: string;
 }
 
 interface CallAcceptedPayload {
   channelName: string;
   acceptedBy: number;
+  isGroup?: boolean;
 }
 
 interface CallRejectedPayload {
   channelName: string;
   rejectedBy: number;
+  isGroup?: boolean;
 }
 
 interface CallEndedPayload {
   channelName: string;
   endedBy: number;
+  isGroup?: boolean;
 }
 
 /* ──────────────── The hook ──────────────── */
@@ -103,27 +107,31 @@ export function useAgoraCall() {
         .reject({
           channelName: payload.channelName,
           participantIds: [payload.caller.id],
+          isGroup: payload.isGroup,
         })
         .catch(console.error);
       return;
     }
+
+    const callerName = payload.caller.name || payload.caller.email.split('@')[0];
 
     // Show incoming call UI
     state.receiveIncoming({
       channelName: payload.channelName,
       callType: payload.callType,
       conversationId: payload.conversationId,
+      isGroup: payload.isGroup ?? false,
       participantIds: [payload.caller.id], // For now, will be enriched
       participants: [
         {
           id: payload.caller.id,
-          name: payload.caller.email.split('@')[0],
+          name: callerName,
           email: payload.caller.email,
         },
       ],
       caller: {
         id: payload.caller.id,
-        name: payload.caller.email.split('@')[0],
+        name: callerName,
         email: payload.caller.email,
       },
     });
@@ -132,8 +140,8 @@ export function useAgoraCall() {
   // ✅ Receiver accepted — caller transitions to connected
   useSocketEvent<CallAcceptedPayload>('call:accepted', useCallback((payload) => {
     const state = useCallStore.getState();
-    if (state.status !== 'outgoing') return;
     if (state.session?.channelName !== payload.channelName) return;
+    if (state.status !== 'outgoing') return;
 
     console.log('[Call] Accepted by user', payload.acceptedBy);
     // We're already in the channel waiting; status is 'outgoing'.
@@ -142,19 +150,32 @@ export function useAgoraCall() {
     state.setConnected();
   }, []));
 
-  // ❌ Receiver rejected — caller cleans up
+  // ❌ Receiver rejected — for 1-on-1 calls, caller cleans up. For group calls,
+  // a single decline is informational and shouldn't tear down the call.
   useSocketEvent<CallRejectedPayload>('call:rejected', useCallback((payload) => {
     const state = useCallStore.getState();
     if (state.session?.channelName !== payload.channelName) return;
+
+    if (state.session?.isGroup) {
+      console.log('[Call] User', payload.rejectedBy, 'declined the group call');
+      return;
+    }
 
     console.log('[Call] Rejected by user', payload.rejectedBy);
     cleanupCall();
   }, []));
 
-  // 🛑 Someone ended the call
+  // 🛑 Someone ended the call. For 1-on-1 calls, both sides drop. For group
+  // calls we ignore this — the FE only sends a leave broadcast for 1-on-1
+  // calls, and group leavers fall off via Agora's user-left event instead.
   useSocketEvent<CallEndedPayload>('call:ended', useCallback((payload) => {
     const state = useCallStore.getState();
     if (state.session?.channelName !== payload.channelName) return;
+
+    if (state.session?.isGroup) {
+      console.log('[Call] User', payload.endedBy, 'left the group call');
+      return;
+    }
 
     console.log('[Call] Ended by user', payload.endedBy);
     cleanupCall();
@@ -210,6 +231,7 @@ export function useAgoraCall() {
       conversationId: number;
       callType: CallType;
       participants: { id: number; name: string; email?: string }[];
+      isGroup?: boolean;
     }) => {
       if (!currentUser) throw new Error('Not authenticated');
 
@@ -225,6 +247,7 @@ export function useAgoraCall() {
         conversationId: opts.conversationId,
         channelName,
         callType: opts.callType,
+        isGroup: opts.isGroup ?? false,
         participantIds: targetIds,
         participants: opts.participants,
       });
@@ -239,6 +262,7 @@ export function useAgoraCall() {
           channelName,
           callType: opts.callType,
           participantIds: targetIds,
+          isGroup: opts.isGroup ?? false,
         });
       } catch (err) {
         console.error('[Call] startCall failed:', err);
@@ -265,6 +289,7 @@ export function useAgoraCall() {
       await agoraApi.accept({
         channelName: session.channelName,
         participantIds: [session.caller.id],
+        isGroup: session.isGroup,
       });
 
       // Now join the channel
@@ -290,6 +315,7 @@ export function useAgoraCall() {
       await agoraApi.reject({
         channelName: session.channelName,
         participantIds: [session.caller.id],
+        isGroup: session.isGroup,
       });
     } catch (err) {
       console.error('[Call] rejectCall error:', err);
@@ -307,10 +333,14 @@ export function useAgoraCall() {
     }
 
     try {
-      await agoraApi.end({
-        channelName: session.channelName,
-        participantIds: session.participantIds,
-      });
+      // For group calls, just leave the channel locally — don't kick others.
+      // Other participants will see the user-left event from Agora itself.
+      if (!session.isGroup) {
+        await agoraApi.end({
+          channelName: session.channelName,
+          participantIds: session.participantIds,
+        });
+      }
     } catch (err) {
       console.error('[Call] endCall error:', err);
     }

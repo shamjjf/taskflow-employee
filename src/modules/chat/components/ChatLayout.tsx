@@ -296,25 +296,45 @@ export function ChatLayout() {
 
   const handleStartCall = async (callType: 'audio' | 'video') => {
     if (!activeId || !activeConv) return;
-    if (!otherUser) {
-      alert('Calls only work in direct (1-on-1) chats. Start a direct conversation first.');
-      return;
-    }
     if (callStatus !== 'idle') {
       alert('You already have an active call.');
       return;
     }
+
+    const isGroupCall = activeConv.type === 'group';
+
+    let participants: { id: number; name: string; email?: string }[] = [];
+    if (isGroupCall) {
+      participants = activeConv.participants
+        .filter((p) => p.userId !== currentUser?.id)
+        .map((p) => ({
+          id: p.userId,
+          name: p.user?.name || `User ${p.userId}`,
+        }));
+      if (participants.length === 0) {
+        alert('No one else is in this group to call.');
+        return;
+      }
+    } else {
+      if (!otherUser) {
+        alert('Calls only work in direct (1-on-1) chats. Start a direct conversation first.');
+        return;
+      }
+      participants = [
+        {
+          id: otherUser.id,
+          name: otherUser.name,
+          email: (otherUser as { email?: string }).email,
+        },
+      ];
+    }
+
     try {
       await startCall({
         conversationId: activeId,
         callType,
-        participants: [
-          {
-            id: otherUser.id,
-            name: otherUser.name,
-            email: (otherUser as { email?: string }).email,
-          },
-        ],
+        participants,
+        isGroup: isGroupCall,
       });
     } catch (err) {
       const axiosErr = err as { response?: { data?: { error?: string } }; message?: string };
@@ -425,7 +445,27 @@ export function ChatLayout() {
                   );
                 })()}
                 <div className="ml-auto flex gap-1.5">
-                  {activeConv.type === 'group' ? (
+                  <button
+                    onClick={() => handleStartCall('audio')}
+                    disabled={callStatus !== 'idle'}
+                    className="w-[34px] h-[34px] rounded-md flex items-center justify-center text-[#71717a] hover:bg-surface-muted hover:text-[#18181b] disabled:opacity-40 disabled:cursor-not-allowed"
+                    title={
+                      activeConv.type === 'group' ? 'Group voice call' : 'Audio call'
+                    }
+                  >
+                    <Phone size={16} />
+                  </button>
+                  <button
+                    onClick={() => handleStartCall('video')}
+                    disabled={callStatus !== 'idle'}
+                    className="w-[34px] h-[34px] rounded-md flex items-center justify-center text-[#71717a] hover:bg-surface-muted hover:text-[#18181b] disabled:opacity-40 disabled:cursor-not-allowed"
+                    title={
+                      activeConv.type === 'group' ? 'Group video call' : 'Video call'
+                    }
+                  >
+                    <Video size={16} />
+                  </button>
+                  {activeConv.type === 'group' && (
                     <button
                       onClick={() => setShowGroupChatManager(true)}
                       className="w-[34px] h-[34px] rounded-md flex items-center justify-center text-[#71717a] hover:bg-surface-muted hover:text-[#18181b]"
@@ -433,25 +473,6 @@ export function ChatLayout() {
                     >
                       <Users size={16} />
                     </button>
-                  ) : (
-                    <>
-                      <button
-                        onClick={() => handleStartCall('audio')}
-                        disabled={!otherUser || callStatus !== 'idle'}
-                        className="w-[34px] h-[34px] rounded-md flex items-center justify-center text-[#71717a] hover:bg-surface-muted hover:text-[#18181b] disabled:opacity-40 disabled:cursor-not-allowed"
-                        title={otherUser ? 'Audio call' : 'Audio call (only in direct chats)'}
-                      >
-                        <Phone size={16} />
-                      </button>
-                      <button
-                        onClick={() => handleStartCall('video')}
-                        disabled={!otherUser || callStatus !== 'idle'}
-                        className="w-[34px] h-[34px] rounded-md flex items-center justify-center text-[#71717a] hover:bg-surface-muted hover:text-[#18181b] disabled:opacity-40 disabled:cursor-not-allowed"
-                        title={otherUser ? 'Video call' : 'Video call (only in direct chats)'}
-                      >
-                        <Video size={16} />
-                      </button>
-                    </>
                   )}
                 </div>
               </>

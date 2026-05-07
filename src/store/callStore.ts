@@ -42,6 +42,8 @@ export interface CallSession {
   participants: CallUser[];
   /** Who started the call (for incoming calls) */
   caller?: CallUser;
+  /** True if this is a multi-party (group) call. Changes reject/end semantics. */
+  isGroup?: boolean;
 }
 
 interface CallState {

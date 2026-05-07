@@ -40,6 +40,7 @@ export const agoraApi = {
     channelName: string;
     callType: CallType;
     participantIds: number[];
+    isGroup?: boolean;
   }): Promise<void> {
     await api.post<ApiResponse<{ ringing: number }>>('/agora/ring', payload);
   },
@@ -48,7 +49,11 @@ export const agoraApi = {
    * Signal that the current user accepted the call.
    * Caller (and other ringing devices of receiver) will receive 'call:accepted'.
    */
-  async accept(payload: { channelName: string; participantIds: number[] }): Promise<void> {
+  async accept(payload: {
+    channelName: string;
+    participantIds: number[];
+    isGroup?: boolean;
+  }): Promise<void> {
     await api.post<ApiResponse<{ accepted: boolean }>>('/agora/accept', payload);
   },
 
@@ -56,7 +61,11 @@ export const agoraApi = {
    * Signal that the current user rejected the call.
    * Caller will receive 'call:rejected'.
    */
-  async reject(payload: { channelName: string; participantIds: number[] }): Promise<void> {
+  async reject(payload: {
+    channelName: string;
+    participantIds: number[];
+    isGroup?: boolean;
+  }): Promise<void> {
     await api.post<ApiResponse<{ rejected: boolean }>>('/agora/reject', payload);
   },
 
@@ -64,7 +73,11 @@ export const agoraApi = {
    * Signal that the current user ended/left the call.
    * All participants will receive 'call:ended'.
    */
-  async end(payload: { channelName: string; participantIds: number[] }): Promise<void> {
+  async end(payload: {
+    channelName: string;
+    participantIds: number[];
+    isGroup?: boolean;
+  }): Promise<void> {
     await api.post<ApiResponse<{ ended: boolean }>>('/agora/end', payload);
   },
 };
