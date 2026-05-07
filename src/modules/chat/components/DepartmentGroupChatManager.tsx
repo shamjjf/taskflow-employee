@@ -62,19 +62,18 @@ export function DepartmentGroupChatManager({
     enabled: isOpen,
   });
 
-  // Get all department members (only when departmentId is known — for manual
-  // groups without a department, the user can still see/remove existing members)
-  const { data: departmentMembers = [] } = useQuery({
-    queryKey: ['departmentMembersForGroup', departmentId],
+  // Get all users in the organisation — anyone can be added to a group chat.
+  const { data: orgUsers = [] } = useQuery({
+    queryKey: ['chat-users'],
     queryFn: async () => {
-      const res = await api.get<ApiResponse<DeptUser[]>>(`/departments/${departmentId}/members`);
+      const res = await api.get<ApiResponse<DeptUser[]>>('/users');
       return res.data;
     },
-    enabled: isOpen && showAddMember && !!departmentId,
+    enabled: isOpen && showAddMember,
   });
 
   // Filter members not yet in the group
-  const availableMembers = departmentMembers.filter(
+  const availableMembers = orgUsers.filter(
     (member) => !members.some((m) => m.userId === member.id)
   );
 
@@ -178,7 +177,7 @@ export function DepartmentGroupChatManager({
           >
             <div className="space-y-3">
               <div className="text-[12.5px] text-[#71717a]">
-                Select teammates to add to the department group chat.
+                Select people from the organisation to add to this group chat.
               </div>
               <div className="flex items-center gap-2 px-3 bg-surface-muted rounded-md h-9">
                 <Search size={14} className="text-[#71717a]" />

@@ -75,17 +75,13 @@ export function ChatLayout() {
     queryFn: async () => (await chatService.listConversations()) as unknown as ConversationDTO[],
   });
 
-  const { data: departmentMembers } = useQuery({
-    queryKey: ['department-members', currentUser?.departmentId],
+  const { data: chatableUsers } = useQuery({
+    queryKey: ['chat-users'],
     queryFn: async () => {
-      if (!currentUser?.departmentId) return [];
-      const res = await api.get<ApiResponse<DeptUser[]>>(
-        `/departments/${currentUser.departmentId}/members`
-      );
+      const res = await api.get<ApiResponse<DeptUser[]>>('/users');
       return res.data;
     },
-    enabled:
-      (showNewChatModal || showCreateGroupModal) && !!currentUser?.departmentId,
+    enabled: showNewChatModal || showCreateGroupModal,
   });
 
   useEffect(() => {
@@ -175,24 +171,24 @@ export function ChatLayout() {
   );
 
   const filteredMembers = useMemo(() => {
-    if (!departmentMembers) return [];
-    const others = departmentMembers.filter((m) => m.id !== currentUser?.id);
+    if (!chatableUsers) return [];
+    const others = chatableUsers.filter((m) => m.id !== currentUser?.id);
     if (!memberSearch.trim()) return others;
     const q = memberSearch.toLowerCase();
     return others.filter(
       (m) => m.name.toLowerCase().includes(q) || m.email.toLowerCase().includes(q)
     );
-  }, [departmentMembers, memberSearch, currentUser?.id]);
+  }, [chatableUsers, memberSearch, currentUser?.id]);
 
   const filteredGroupMembers = useMemo(() => {
-    if (!departmentMembers) return [];
-    const others = departmentMembers.filter((m) => m.id !== currentUser?.id);
+    if (!chatableUsers) return [];
+    const others = chatableUsers.filter((m) => m.id !== currentUser?.id);
     if (!groupSearch.trim()) return others;
     const q = groupSearch.toLowerCase();
     return others.filter(
       (m) => m.name.toLowerCase().includes(q) || m.email.toLowerCase().includes(q)
     );
-  }, [departmentMembers, groupSearch, currentUser?.id]);
+  }, [chatableUsers, groupSearch, currentUser?.id]);
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -615,7 +611,7 @@ export function ChatLayout() {
       >
         <div className="space-y-3">
           <div className="text-[12.5px] text-[#71717a]">
-            Select a teammate from your department to start chatting.
+            Select someone from the organisation to start chatting.
           </div>
           <div className="flex items-center gap-2 px-3 bg-surface-muted rounded-md h-9">
             <Search size={14} className="text-[#71717a]" />
