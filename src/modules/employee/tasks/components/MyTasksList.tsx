@@ -1,11 +1,12 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { cn } from '@/lib/utils';
 import { EmployeeTaskCard } from './EmployeeTaskCard';
 import { employeeTasksService } from '../services/employeeTasksService';
 import { normalizeTask } from '@/lib/normalizers';
+import { useSocket, useSocketEvent } from '@/hooks/useSocket';
 import type { Task } from '@/types';
 
 type TabKey = 'all' | 'assigned' | 'in_progress' | 'in_review' | 'completed';
@@ -23,6 +24,27 @@ export function MyTasksList() {
   const [activeTab, setActiveTab] = useState<TabKey>('all');
   const [actionError, setActionError] = useState('');
   const [actionSuccess, setActionSuccess] = useState('');
+
+  useSocket();
+
+  const refreshTasks = useCallback(
+    (data: unknown) => {
+      queryClient.invalidateQueries({ queryKey: ['my-tasks'] });
+      const taskId =
+        (data as { taskId?: number })?.taskId ?? (data as { task?: { id?: number } })?.task?.id;
+      if (taskId) {
+        queryClient.invalidateQueries({ queryKey: ['task', taskId] });
+        queryClient.invalidateQueries({ queryKey: ['task-comments', taskId] });
+      }
+    },
+    [queryClient]
+  );
+
+  useSocketEvent('task:assigned', refreshTasks);
+  useSocketEvent('task:started', refreshTasks);
+  useSocketEvent('task:completed', refreshTasks);
+  useSocketEvent('task:reviewed', refreshTasks);
+  useSocketEvent('task:rejected', refreshTasks);
 
   const { data, isLoading } = useQuery({
     queryKey: ['my-tasks'],

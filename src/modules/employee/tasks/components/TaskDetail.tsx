@@ -1,9 +1,10 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { cn, getInitials, formatRelativeTime } from '@/lib/utils';
+import { useSocket, useSocketEvent } from '@/hooks/useSocket';
 import { Avatar, Badge, Button, Card, CardBody } from '@/components/ui';
 import { AttachmentChip } from '@/components/shared';
 import {
@@ -69,6 +70,26 @@ export function TaskDetail({ taskId }: TaskDetailProps) {
     queryKey: ['task-comments', taskId],
     queryFn: () => employeeTasksService.getComments(taskId),
   });
+
+  useSocket();
+
+  const refreshThisTask = useCallback(
+    (data: unknown) => {
+      const eventTaskId =
+        (data as { taskId?: number })?.taskId ?? (data as { task?: { id?: number } })?.task?.id;
+      if (eventTaskId !== taskId) return;
+      queryClient.invalidateQueries({ queryKey: ['task', taskId] });
+      queryClient.invalidateQueries({ queryKey: ['task-comments', taskId] });
+      queryClient.invalidateQueries({ queryKey: ['my-tasks'] });
+    },
+    [taskId, queryClient]
+  );
+
+  useSocketEvent('task:started', refreshThisTask);
+  useSocketEvent('task:completed', refreshThisTask);
+  useSocketEvent('task:reviewed', refreshThisTask);
+  useSocketEvent('task:rejected', refreshThisTask);
+  useSocketEvent('task:commented', refreshThisTask);
 
   const task: Task | null = rawTask ? normalizeTask(rawTask) : null;
 
