@@ -1,10 +1,10 @@
 'use client';
 
 import { useState, useMemo, useEffect, useRef } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { Avatar, Button, Modal } from '@/components/ui';
 import { AttachmentChip } from '@/components/shared';
-import { Search, Phone, Video, Paperclip, Send, Plus, Users } from 'lucide-react';
+import { Search, Phone, Video, Paperclip, Send, Plus, Users, UsersRound } from 'lucide-react';
 import { cn, getInitials } from '@/lib/utils';
 import { chatService } from '../services/chatService';
 import { DepartmentGroupChatManager } from './DepartmentGroupChatManager';
@@ -24,8 +24,23 @@ interface DeptUser {
   id: number;
   name: string;
   email: string;
-  role: 'super_admin' | 'team_leader' | 'employee';
+  role: 'super_admin' | 'team_leader' | 'employee' | 'admin';
   designation?: string;
+}
+
+interface ConversationParticipantDTO {
+  userId: number;
+  user?: { id: number; name: string; profileImage?: string };
+}
+
+interface ConversationDTO {
+  id: number;
+  type: 'direct' | 'group';
+  name?: string | null;
+  departmentId?: number | null;
+  isAutoDepartmentGroup?: boolean;
+  participants: ConversationParticipantDTO[];
+  messages?: Array<{ id: number; message: string; createdAt: string }>;
 }
 
 export function ChatLayout() {
@@ -39,25 +54,25 @@ export function ChatLayout() {
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState('');
   const [showNewChatModal, setShowNewChatModal] = useState(false);
+  const [showCreateGroupModal, setShowCreateGroupModal] = useState(false);
   const [showGroupChatManager, setShowGroupChatManager] = useState(false);
   const [memberSearch, setMemberSearch] = useState('');
   const [chatSearch, setChatSearch] = useState('');
+  const [groupName, setGroupName] = useState('');
+  const [groupSearch, setGroupSearch] = useState('');
+  const [selectedGroupMemberIds, setSelectedGroupMemberIds] = useState<number[]>([]);
   const [startingChatWithId, setStartingChatWithId] = useState<number | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const canCreateGroup =
+    currentUser?.role === 'super_admin' ||
+    currentUser?.role === 'team_leader' ||
+    (currentUser as unknown as { role?: string })?.role === 'admin';
+
   const { data: conversations, isLoading: loadingConvs } = useQuery({
     queryKey: ['conversations'],
-    queryFn: () => chatService.listConversations(),
-  });
-
-  const { data: departmentGroupChat } = useQuery({
-    queryKey: ['departmentGroupChat', currentUser?.departmentId],
-    queryFn: async () => {
-      if (!currentUser?.departmentId) return null;
-      return chatService.getDepartmentGroupChat(currentUser.departmentId);
-    },
-    enabled: !!currentUser?.departmentId,
+    queryFn: async () => (await chatService.listConversations()) as unknown as ConversationDTO[],
   });
 
   const { data: departmentMembers } = useQuery({
@@ -69,7 +84,8 @@ export function ChatLayout() {
       );
       return res.data;
     },
-    enabled: showNewChatModal && !!currentUser?.departmentId,
+    enabled:
+      (showNewChatModal || showCreateGroupModal) && !!currentUser?.departmentId,
   });
 
   useEffect(() => {
@@ -78,21 +94,24 @@ export function ChatLayout() {
     }
   }, [conversations, activeId]);
 
-  const { data: messages } = useQuery({
+  const { data: messagesRaw } = useQuery({
     queryKey: ['messages', activeId],
     queryFn: () => (activeId ? chatService.getMessages(activeId) : Promise.resolve([])),
     enabled: activeId !== null,
   });
 
+  // Defensive: only render messages whose conversationId matches the active
+  // chat. This prevents stale data from a previous chat from leaking through.
+  const messages = useMemo(
+    () => (messagesRaw || []).filter((m) => m.conversationId === activeId),
+    [messagesRaw, activeId]
+  );
+
   // ============ REAL-TIME SOCKET INTEGRATION ============
-  // Connect socket on mount + ensure connection
   useEffect(() => {
     const token = typeof window !== 'undefined' ? localStorage.getItem('access_token') : null;
     if (!token) return;
-    const socket = socketClient.connect(token);
-    return () => {
-      // Don't disconnect on unmount — keep socket alive across pages
-    };
+    socketClient.connect(token);
   }, []);
 
   // Join conversation room when active conversation changes
@@ -108,19 +127,14 @@ export function ChatLayout() {
   useEffect(() => {
     const handleNewMessage = (data: Message & { conversationId?: number }) => {
       const convId = (data as { conversationId?: number }).conversationId;
-      // If the message arrives for the currently open conversation,
-      // optimistically update the messages cache so the UI shows it instantly.
       if (convId && convId === activeId) {
         queryClient.setQueryData<Message[]>(['messages', convId], (old = []) => {
-          // Avoid duplicates if the sender already added it locally
           if (old.some((m) => m.id === data.id)) return old;
           return [...old, data];
         });
       } else if (convId) {
-        // Background conversation: just refetch its messages and update conv list
         queryClient.invalidateQueries({ queryKey: ['messages', convId] });
       }
-      // Always refresh conversation list so latest message preview updates
       queryClient.invalidateQueries({ queryKey: ['conversations'] });
     };
 
@@ -131,12 +145,29 @@ export function ChatLayout() {
   }, [activeId, queryClient]);
   // =======================================================
 
+  const getDisplayInfo = (conv: ConversationDTO) => {
+    if (conv.type === 'group') {
+      return {
+        name: conv.name || 'Group chat',
+        avatarColorId: conv.id + 1000,
+        subtitle: `${conv.participants.length} members`,
+      };
+    }
+    const other = conv.participants.find((p) => p.userId !== currentUser?.id);
+    return {
+      name: other?.user?.name || conv.name || 'Direct chat',
+      avatarColorId: other?.user?.id || conv.id,
+      subtitle: 'Direct message',
+    };
+  };
+
   const filteredConversations = useMemo(() => {
     if (!conversations) return [];
     if (!chatSearch.trim()) return conversations;
     const q = chatSearch.toLowerCase();
-    return conversations.filter((c) => (c.name || '').toLowerCase().includes(q));
-  }, [conversations, chatSearch]);
+    return conversations.filter((c) => getDisplayInfo(c).name.toLowerCase().includes(q));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [conversations, chatSearch, currentUser?.id]);
 
   const activeConv = useMemo(
     () => conversations?.find((c) => c.id === activeId),
@@ -153,11 +184,29 @@ export function ChatLayout() {
     );
   }, [departmentMembers, memberSearch, currentUser?.id]);
 
+  const filteredGroupMembers = useMemo(() => {
+    if (!departmentMembers) return [];
+    const others = departmentMembers.filter((m) => m.id !== currentUser?.id);
+    if (!groupSearch.trim()) return others;
+    const q = groupSearch.toLowerCase();
+    return others.filter(
+      (m) => m.name.toLowerCase().includes(q) || m.email.toLowerCase().includes(q)
+    );
+  }, [departmentMembers, groupSearch, currentUser?.id]);
+
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
   }, [messages]);
+
+  useEffect(() => {
+    if (!showCreateGroupModal) {
+      setGroupName('');
+      setGroupSearch('');
+      setSelectedGroupMemberIds([]);
+    }
+  }, [showCreateGroupModal]);
 
   const handleStartChat = async (member: DeptUser) => {
     setStartingChatWithId(member.id);
@@ -174,6 +223,33 @@ export function ChatLayout() {
       setStartingChatWithId(null);
     }
   };
+
+  const toggleGroupMember = (userId: number) => {
+    setSelectedGroupMemberIds((prev) =>
+      prev.includes(userId) ? prev.filter((id) => id !== userId) : [...prev, userId]
+    );
+  };
+
+  const createGroupMutation = useMutation({
+    mutationFn: () => {
+      if (!groupName.trim()) throw new Error('Group name required');
+      if (selectedGroupMemberIds.length < 1) throw new Error('Pick at least one member');
+      return chatService.createGroup({
+        name: groupName.trim(),
+        participantIds: selectedGroupMemberIds,
+        departmentId: currentUser?.departmentId ?? undefined,
+      });
+    },
+    onSuccess: (conversation) => {
+      queryClient.invalidateQueries({ queryKey: ['conversations'] });
+      setActiveId(conversation.id);
+      setShowCreateGroupModal(false);
+    },
+    onError: (err) => {
+      const axiosErr = err as { response?: { data?: { error?: string } }; message?: string };
+      alert(axiosErr?.response?.data?.error || axiosErr?.message || 'Could not create group');
+    },
+  });
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -202,9 +278,10 @@ export function ChatLayout() {
       setInput('');
       setAttachment(null);
       setUploadError('');
-      // Socket will deliver the message back via 'message:new' event,
-      // but invalidate conversations to update the sidebar preview.
       queryClient.invalidateQueries({ queryKey: ['conversations'] });
+    } catch (err) {
+      const axiosErr = err as { response?: { data?: { error?: string } }; message?: string };
+      alert(axiosErr?.response?.data?.error || axiosErr?.message || 'Failed to send message');
     } finally {
       setSending(false);
     }
@@ -213,11 +290,7 @@ export function ChatLayout() {
   // ============ CALL: derive other participant + start call ============
   const otherUser = useMemo(() => {
     if (!activeConv || activeConv.type !== 'direct') return null;
-    const participants =
-      (activeConv as unknown as {
-        participants?: Array<{ userId: number; user?: { id: number; name: string; email?: string } }>;
-      }).participants || [];
-    const other = participants.find((p) => p.userId !== currentUser?.id);
+    const other = activeConv.participants.find((p) => p.userId !== currentUser?.id);
     return other?.user || null;
   }, [activeConv, currentUser?.id]);
 
@@ -239,7 +312,7 @@ export function ChatLayout() {
           {
             id: otherUser.id,
             name: otherUser.name,
-            email: otherUser.email,
+            email: (otherUser as { email?: string }).email,
           },
         ],
       });
@@ -268,6 +341,17 @@ export function ChatLayout() {
               <Plus size={14} strokeWidth={2.5} />
               New Chat
             </Button>
+            {canCreateGroup && (
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => setShowCreateGroupModal(true)}
+                className="w-full justify-center"
+              >
+                <UsersRound size={14} strokeWidth={2.5} />
+                New Group
+              </Button>
+            )}
             <div className="flex items-center gap-2 px-3 bg-surface-muted rounded-md h-9">
               <Search size={14} className="text-[#71717a]" />
               <input
@@ -297,7 +381,7 @@ export function ChatLayout() {
             ) : (
               filteredConversations.map((c) => {
                 const isActive = activeId === c.id;
-                const displayName = c.name || (c.type === 'direct' ? 'Direct' : 'Group');
+                const info = getDisplayInfo(c);
                 return (
                   <div
                     key={c.id}
@@ -307,11 +391,11 @@ export function ChatLayout() {
                       isActive ? 'bg-primary-soft' : 'hover:bg-surface-muted'
                     )}
                   >
-                    <Avatar initials={getInitials(displayName)} color={colorForId(c.id)} />
+                    <Avatar initials={getInitials(info.name)} color={colorForId(info.avatarColorId)} />
                     <div className="flex-1 min-w-0">
-                      <div className="text-[13px] font-medium truncate">{displayName}</div>
+                      <div className="text-[13px] font-medium truncate">{info.name}</div>
                       <div className="text-xs text-[#71717a] truncate mt-0.5">
-                        {c.type === 'direct' ? 'Direct message' : 'Group chat'}
+                        {info.subtitle}
                       </div>
                     </div>
                   </div>
@@ -325,20 +409,26 @@ export function ChatLayout() {
           <div className="px-5 py-3.5 border-b border-border flex items-center gap-2.5">
             {activeConv ? (
               <>
-                <Avatar
-                  initials={getInitials(activeConv.name || 'C')}
-                  color={colorForId(activeConv.id)}
-                />
-                <div>
-                  <div className="font-medium text-sm">{activeConv.name || 'Conversation'}</div>
-                  <div className="text-[11.5px] text-success">● Active</div>
-                </div>
+                {(() => {
+                  const info = getDisplayInfo(activeConv);
+                  return (
+                    <>
+                      <Avatar
+                        initials={getInitials(info.name)}
+                        color={colorForId(info.avatarColorId)}
+                      />
+                      <div>
+                        <div className="font-medium text-sm">{info.name}</div>
+                        <div className="text-[11.5px] text-[#71717a]">{info.subtitle}</div>
+                      </div>
+                    </>
+                  );
+                })()}
                 <div className="ml-auto flex gap-1.5">
                   {activeConv.type === 'group' ? (
                     <button
                       onClick={() => setShowGroupChatManager(true)}
-                      disabled={!departmentGroupChat || activeId !== departmentGroupChat.id}
-                      className="w-[34px] h-[34px] rounded-md flex items-center justify-center text-[#71717a] hover:bg-surface-muted hover:text-[#18181b] disabled:opacity-40 disabled:cursor-not-allowed"
+                      className="w-[34px] h-[34px] rounded-md flex items-center justify-center text-[#71717a] hover:bg-surface-muted hover:text-[#18181b]"
                       title="Manage members"
                     >
                       <Users size={16} />
@@ -396,6 +486,11 @@ export function ChatLayout() {
                       <Avatar initials={getInitials(sender.name)} color={colorForId(sender.id)} />
                     )}
                     <div>
+                      {!isOutgoing && sender && activeConv?.type === 'group' && (
+                        <div className="text-[11px] text-[#71717a] mb-0.5 ml-1">
+                          {sender.name}
+                        </div>
+                      )}
                       {m.message && (
                         <div
                           className={cn(
@@ -547,10 +642,105 @@ export function ChatLayout() {
         </div>
       </Modal>
 
-      {departmentGroupChat && (
+      <Modal
+        isOpen={showCreateGroupModal}
+        onClose={() => setShowCreateGroupModal(false)}
+        title="Create Group Chat"
+        footer={
+          <div className="flex gap-2 justify-end">
+            <Button variant="secondary" onClick={() => setShowCreateGroupModal(false)}>
+              Cancel
+            </Button>
+            <Button
+              variant="primary"
+              onClick={() => createGroupMutation.mutate()}
+              disabled={
+                createGroupMutation.isPending ||
+                !groupName.trim() ||
+                selectedGroupMemberIds.length === 0
+              }
+            >
+              {createGroupMutation.isPending ? 'Creating...' : 'Create group'}
+            </Button>
+          </div>
+        }
+      >
+        <div className="space-y-3">
+          <div>
+            <label className="block text-[12.5px] font-medium text-[#52525b] mb-1">
+              Group name
+            </label>
+            <input
+              value={groupName}
+              onChange={(e) => setGroupName(e.target.value)}
+              placeholder="e.g. Q4 Launch Team"
+              className="w-full px-3 py-2 border border-border rounded-md outline-none focus:border-primary text-sm"
+            />
+          </div>
+
+          <div>
+            <div className="flex items-center justify-between mb-1">
+              <label className="text-[12.5px] font-medium text-[#52525b]">
+                Add members ({selectedGroupMemberIds.length} selected)
+              </label>
+            </div>
+            <div className="flex items-center gap-2 px-3 py-2 border border-border rounded-md mb-2">
+              <Search size={14} className="text-[#71717a]" />
+              <input
+                value={groupSearch}
+                onChange={(e) => setGroupSearch(e.target.value)}
+                placeholder="Search teammates..."
+                className="flex-1 bg-transparent border-none outline-none text-sm"
+              />
+            </div>
+            <div className="max-h-[280px] overflow-y-auto border border-border rounded-md">
+              {filteredGroupMembers.length === 0 ? (
+                <div className="text-center py-6 text-sm text-[#71717a]">
+                  No teammates available
+                </div>
+              ) : (
+                filteredGroupMembers.map((member) => {
+                  const checked = selectedGroupMemberIds.includes(member.id);
+                  return (
+                    <label
+                      key={member.id}
+                      className={cn(
+                        'flex items-center gap-3 px-3 py-2.5 border-b border-border last:border-b-0 cursor-pointer transition-colors',
+                        checked ? 'bg-primary-soft' : 'hover:bg-surface-muted'
+                      )}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        onChange={() => toggleGroupMember(member.id)}
+                        className="cursor-pointer"
+                      />
+                      <Avatar
+                        initials={getInitials(member.name)}
+                        color={colorForId(member.id)}
+                        size="sm"
+                      />
+                      <div className="flex-1 min-w-0">
+                        <div className="text-[13px] font-medium truncate">{member.name}</div>
+                        <div className="text-[11.5px] text-[#71717a] truncate">
+                          {member.role === 'team_leader'
+                            ? 'Team Leader'
+                            : member.designation || 'Employee'}
+                        </div>
+                      </div>
+                    </label>
+                  );
+                })
+              )}
+            </div>
+          </div>
+        </div>
+      </Modal>
+
+      {activeConv && activeConv.type === 'group' && (
         <DepartmentGroupChatManager
-          conversationId={departmentGroupChat.id}
-          departmentId={currentUser?.departmentId || 0}
+          conversationId={activeConv.id}
+          departmentId={activeConv.departmentId || currentUser?.departmentId || 0}
           isOpen={showGroupChatManager}
           onClose={() => setShowGroupChatManager(false)}
         />

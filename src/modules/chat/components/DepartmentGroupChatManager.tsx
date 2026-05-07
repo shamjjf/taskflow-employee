@@ -62,14 +62,15 @@ export function DepartmentGroupChatManager({
     enabled: isOpen,
   });
 
-  // Get all department members
+  // Get all department members (only when departmentId is known — for manual
+  // groups without a department, the user can still see/remove existing members)
   const { data: departmentMembers = [] } = useQuery({
     queryKey: ['departmentMembersForGroup', departmentId],
     queryFn: async () => {
       const res = await api.get<ApiResponse<DeptUser[]>>(`/departments/${departmentId}/members`);
       return res.data;
     },
-    enabled: isOpen && showAddMember,
+    enabled: isOpen && showAddMember && !!departmentId,
   });
 
   // Filter members not yet in the group

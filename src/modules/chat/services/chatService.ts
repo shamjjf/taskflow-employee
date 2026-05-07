@@ -31,6 +31,14 @@ export const chatService = {
     return res.data;
   },
 
+  async createGroup(data: {
+    name: string;
+    participantIds: number[];
+    departmentId?: number;
+  }) {
+    return this.createConversation({ type: 'group', ...data });
+  },
+
   // Find an existing direct conversation with a user, or create a new one
   async findOrCreateDirect(targetUserId: number, targetUserName: string): Promise<Conversation> {
     // First, try to find an existing direct conversation that has exactly these 2 participants
