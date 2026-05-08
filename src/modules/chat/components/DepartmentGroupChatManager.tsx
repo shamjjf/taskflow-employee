@@ -63,13 +63,15 @@ export function DepartmentGroupChatManager({
   });
 
   // Get all users in the organisation — anyone can be added to a group chat.
+  // Loaded as soon as the manager opens so the "Add Member" button is ready
+  // to use immediately (avoids the disabled-button + gated-query deadlock).
   const { data: orgUsers = [] } = useQuery({
     queryKey: ['chat-users'],
     queryFn: async () => {
       const res = await api.get<ApiResponse<DeptUser[]>>('/users');
       return res.data;
     },
-    enabled: isOpen && showAddMember,
+    enabled: isOpen,
   });
 
   // Filter members not yet in the group
@@ -101,9 +103,11 @@ export function DepartmentGroupChatManager({
     },
   });
 
+  const role = currentUser?.role as string | undefined;
   const isAdminOrTeamLead =
-    currentUser?.role === 'super_admin' ||
-    (currentUser?.role === 'team_leader' && currentUser?.departmentId === departmentId);
+    role === 'super_admin' ||
+    role === 'admin' ||
+    role === 'team_leader';
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="Department Group Chat Members">
@@ -117,7 +121,6 @@ export function DepartmentGroupChatManager({
                 variant="primary"
                 size="sm"
                 onClick={() => setShowAddMember(true)}
-                disabled={availableMembers.length === 0}
               >
                 <Plus size={14} />
                 Add Member

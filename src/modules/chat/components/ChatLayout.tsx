@@ -346,7 +346,7 @@ export function ChatLayout() {
   return (
     <>
       <div className="grid grid-cols-[280px_1fr] h-[calc(100vh-140px)] bg-white border border-border rounded-lg overflow-hidden">
-        <div className="border-r border-border flex flex-col">
+        <div className="border-r border-border flex flex-col min-h-0 overflow-hidden">
           <div className="p-3 border-b border-border space-y-2">
             <Button
               variant="primary"
@@ -421,7 +421,7 @@ export function ChatLayout() {
           </div>
         </div>
 
-        <div className="flex flex-col">
+        <div className="flex flex-col min-h-0 overflow-hidden">
           <div className="px-5 py-3.5 border-b border-border flex items-center gap-2.5">
             {activeConv ? (
               <>
@@ -477,7 +477,7 @@ export function ChatLayout() {
             )}
           </div>
 
-          <div ref={scrollRef} className="flex-1 overflow-y-auto p-5 flex flex-col gap-3">
+          <div ref={scrollRef} className="flex-1 min-h-0 overflow-y-auto p-5 flex flex-col gap-3">
             {!activeId ? (
               <div className="text-center py-12 text-sm text-[#71717a]">
                 Choose a chat to start messaging, or click <strong>New Chat</strong> to start one.
