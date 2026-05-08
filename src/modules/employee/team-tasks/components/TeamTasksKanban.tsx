@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useMemo } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useState, useMemo, useCallback } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { cn } from '@/lib/utils';
 import { Avatar } from '@/components/ui';
 import { FilterBar, FilterSelect } from '@/components/shared';
@@ -10,6 +10,7 @@ import { normalizeTask } from '@/lib/normalizers';
 import { TASK_STATUS_LABELS, TASK_PRIORITY_LABELS } from '@/constants';
 import type { TaskStatus, Task, TaskPriority } from '@/types';
 import { TeamTaskDetailModal } from './TeamTaskDetailModal';
+import { useSocket, useSocketEvent } from '@/hooks/useSocket';
 
 const COLUMNS: TaskStatus[] = ['assigned', 'in_progress', 'in_review', 'completed', 'overdue'];
 
@@ -23,6 +24,28 @@ export function TeamTasksKanban() {
   const [assigneeFilter, setAssigneeFilter] = useState('');
   const [priorityFilter, setPriorityFilter] = useState('');
   const [selectedTaskId, setSelectedTaskId] = useState<number | null>(null);
+  const queryClient = useQueryClient();
+
+  useSocket();
+
+  const refreshTasks = useCallback(
+    (data: unknown) => {
+      queryClient.invalidateQueries({ queryKey: ['team-tasks'] });
+      const taskId =
+        (data as { taskId?: number })?.taskId ?? (data as { task?: { id?: number } })?.task?.id;
+      if (taskId) {
+        queryClient.invalidateQueries({ queryKey: ['task', taskId] });
+        queryClient.invalidateQueries({ queryKey: ['task-comments', taskId] });
+      }
+    },
+    [queryClient]
+  );
+
+  useSocketEvent('task:assigned', refreshTasks);
+  useSocketEvent('task:started', refreshTasks);
+  useSocketEvent('task:completed', refreshTasks);
+  useSocketEvent('task:reviewed', refreshTasks);
+  useSocketEvent('task:rejected', refreshTasks);
 
   const { data, isLoading } = useQuery({
     queryKey: ['team-tasks'],

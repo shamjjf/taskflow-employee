@@ -6,6 +6,7 @@ import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui';
 import { useAuthStore } from '@/store/authStore';
 import { useRole } from '@/hooks/useRole';
+import { useSidebarBadges } from '@/hooks/useSidebarBadges';
 import {
   LayoutDashboard,
   ClipboardList,
@@ -30,13 +31,14 @@ export function EmployeeSidebar() {
   const pathname = usePathname();
   const user = useAuthStore((s) => s.user);
   const { isTeamLeader } = useRole();
+  const badges = useSidebarBadges();
 
   const navSections: { title: string; items: NavItem[]; visible?: boolean }[] = [
     {
       title: 'My Work',
       items: [
         { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-        { href: '/my-tasks', label: 'My Tasks', icon: ClipboardList, badge: 4 },
+        { href: '/my-tasks', label: 'My Tasks', icon: ClipboardList, badge: badges.myTasks },
         { href: '/my-reports', label: 'My Reports', icon: FileText },
         { href: '/submit-report', label: 'Submit Report', icon: FilePlus },
       ],
@@ -45,21 +47,21 @@ export function EmployeeSidebar() {
       title: 'Team Management',
       visible: isTeamLeader,
       items: [
-        { href: '/team-tasks', label: 'Team Tasks', icon: CheckSquare, badge: 9 },
-        { href: '/approve-reports', label: 'Approve Reports', icon: UserCheck, badge: 3 },
+        { href: '/team-tasks', label: 'Team Tasks', icon: CheckSquare, badge: badges.teamTasks },
+        { href: '/approve-reports', label: 'Approve Reports', icon: UserCheck, badge: badges.approveReports },
       ],
     },
     {
       title: 'Team',
       items: [
         { href: '/team', label: 'My Team', icon: Users },
-        { href: '/chat', label: 'Chat', icon: MessageSquare, badge: 2 },
+        { href: '/chat', label: 'Chat', icon: MessageSquare, badge: badges.chat },
       ],
     },
     {
       title: 'Account',
       items: [
-        { href: '/notifications', label: 'Notifications', icon: Bell, badge: 3 },
+        { href: '/notifications', label: 'Notifications', icon: Bell, badge: badges.notifications },
         { href: '/profile', label: 'Profile', icon: User },
       ],
     },
