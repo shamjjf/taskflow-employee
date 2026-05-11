@@ -18,6 +18,8 @@ import {
   User,
   UserCheck,
   CheckSquare,
+  PanelLeftClose,
+  PanelLeftOpen,
 } from 'lucide-react';
 
 interface NavItem {
@@ -27,7 +29,12 @@ interface NavItem {
   badge?: number;
 }
 
-export function EmployeeSidebar() {
+interface EmployeeSidebarProps {
+  collapsed: boolean;
+  onToggle: () => void;
+}
+
+export function EmployeeSidebar({ collapsed, onToggle }: EmployeeSidebarProps) {
   const pathname = usePathname();
   const user = useAuthStore((s) => s.user);
   const { isTeamLeader } = useRole();
@@ -68,28 +75,73 @@ export function EmployeeSidebar() {
   ];
 
   return (
-    <aside className="w-60 bg-white border-r border-border flex flex-col fixed h-screen overflow-y-auto">
-      <div className="px-5 py-4 border-b border-border flex items-center gap-2.5">
-        <div className="w-7 h-7 bg-primary rounded-md flex items-center justify-center text-white font-bold text-sm">
-          T
+    <aside
+      className={cn(
+        'bg-white border-r border-border flex flex-col fixed h-screen overflow-y-auto transition-[width] duration-200',
+        collapsed ? 'w-16' : 'w-48 md:w-52 lg:w-60'
+      )}
+    >
+      <div
+        className={cn(
+          'border-b border-border flex items-center',
+          collapsed ? 'px-3 py-4 justify-center' : 'px-5 py-4 justify-between'
+        )}
+      >
+        <div className="flex items-center gap-2.5 min-w-0">
+          <div className="w-7 h-7 bg-primary rounded-md flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
+            T
+          </div>
+          {!collapsed && (
+            <div className="text-[15px] font-semibold tracking-tight truncate">TaskFlow</div>
+          )}
         </div>
-        <div className="text-[15px] font-semibold tracking-tight">TaskFlow</div>
+        {!collapsed && (
+          <button
+            type="button"
+            onClick={onToggle}
+            title="Collapse sidebar"
+            aria-label="Collapse sidebar"
+            className="w-7 h-7 rounded-md flex items-center justify-center text-[#71717a] hover:bg-surface-muted hover:text-[#18181b] transition-colors flex-shrink-0"
+          >
+            <PanelLeftClose size={16} />
+          </button>
+        )}
       </div>
-      <div className="px-5 py-3 border-b border-border">
-        <div className="text-[11px] text-[#a1a1aa] uppercase tracking-wider font-medium mb-1">
-          Department
+
+      {collapsed && (
+        <button
+          type="button"
+          onClick={onToggle}
+          title="Expand sidebar"
+          aria-label="Expand sidebar"
+          className="mx-3 mt-3 h-9 rounded-md flex items-center justify-center text-[#71717a] hover:bg-surface-muted hover:text-[#18181b] transition-colors"
+        >
+          <PanelLeftOpen size={16} />
+        </button>
+      )}
+
+      {!collapsed && (
+        <div className="px-5 py-3 border-b border-border">
+          <div className="text-[11px] text-[#a1a1aa] uppercase tracking-wider font-medium mb-1">
+            Department
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="text-[13px] font-medium truncate">{user?.departmentName || 'Development'}</div>
+            {isTeamLeader && <Badge variant="purple" withDot={false}>TL</Badge>}
+          </div>
         </div>
-        <div className="flex items-center gap-2">
-          <div className="text-[13px] font-medium">{user?.departmentName || 'Development'}</div>
-          {isTeamLeader && <Badge variant="purple" withDot={false}>TL</Badge>}
-        </div>
-      </div>
-      <nav className="p-3 flex-1">
-        {navSections.filter((s) => s.visible !== false).map((section) => (
+      )}
+
+      <nav className={cn('flex-1', collapsed ? 'p-2' : 'p-3')}>
+        {navSections.filter((s) => s.visible !== false).map((section, sectionIdx) => (
           <div key={section.title}>
-            <div className="px-2 py-2 text-[11px] uppercase tracking-wider text-[#a1a1aa] font-medium mt-2">
-              {section.title}
-            </div>
+            {!collapsed ? (
+              <div className="px-2 py-2 text-[11px] uppercase tracking-wider text-[#a1a1aa] font-medium mt-2">
+                {section.title}
+              </div>
+            ) : (
+              sectionIdx > 0 && <div className="my-2 border-t border-border/60 mx-2" />
+            )}
             {section.items.map((item) => {
               const isActive = pathname === item.href || pathname.startsWith(item.href + '/');
               const Icon = item.icon;
@@ -97,25 +149,33 @@ export function EmployeeSidebar() {
                 <Link
                   key={item.href}
                   href={item.href}
+                  title={collapsed ? item.label : undefined}
                   className={cn(
-                    'flex items-center gap-2.5 px-2.5 py-1.5 rounded-md text-[13.5px] font-medium transition-all mb-0.5',
+                    'flex items-center rounded-md text-[13.5px] font-medium transition-all mb-0.5 relative',
+                    collapsed
+                      ? 'justify-center w-10 h-10 mx-auto'
+                      : 'gap-2.5 px-2.5 py-1.5',
                     isActive
                       ? 'bg-primary-soft text-primary'
                       : 'text-[#71717a] hover:bg-surface-muted hover:text-[#18181b]'
                   )}
                 >
                   <Icon size={16} />
-                  <span className="flex-1">{item.label}</span>
-                  {item.badge && (
-                    <span
-                      className={cn(
-                        'text-[11px] px-1.5 py-0.5 rounded-full font-medium',
-                        isActive ? 'bg-white text-primary' : 'bg-surface-muted text-[#71717a]'
-                      )}
-                    >
-                      {item.badge}
-                    </span>
-                  )}
+                  {!collapsed && <span className="flex-1 truncate">{item.label}</span>}
+                  {item.badge ? (
+                    collapsed ? (
+                      <span className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-primary" />
+                    ) : (
+                      <span
+                        className={cn(
+                          'text-[11px] px-1.5 py-0.5 rounded-full font-medium',
+                          isActive ? 'bg-white text-primary' : 'bg-surface-muted text-[#71717a]'
+                        )}
+                      >
+                        {item.badge}
+                      </span>
+                    )
+                  ) : null}
                 </Link>
               );
             })}
