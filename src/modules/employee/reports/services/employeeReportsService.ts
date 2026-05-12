@@ -8,14 +8,30 @@ export interface SubmitReportDto {
   reportDate?: string;
 }
 
+export interface ResubmitReportDto {
+  reportType?: ReportType;
+  description: string;
+  taskId?: number | null;
+}
+
 export const employeeReportsService = {
   async getMyReports(): Promise<Report[]> {
     const res = await api.get<ApiResponse<Report[]>>('/reports');
     return res.data;
   },
 
+  async getReport(id: number): Promise<Report> {
+    const res = await api.get<ApiResponse<Report>>(`/reports/${id}`);
+    return res.data;
+  },
+
   async submitReport(data: SubmitReportDto): Promise<Report> {
     const res = await api.post<ApiResponse<Report>>('/reports', data);
+    return res.data;
+  },
+
+  async resubmitReport(id: number, data: ResubmitReportDto): Promise<Report> {
+    const res = await api.put<ApiResponse<Report>>(`/reports/${id}/resubmit`, data);
     return res.data;
   },
 };

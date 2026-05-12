@@ -1,26 +1,48 @@
 'use client';
 
-import { useState, FormEvent } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect, FormEvent } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Card, CardBody, Button, Select } from '@/components/ui';
-import { Send, Save } from 'lucide-react';
+import { Send, Save, RotateCcw } from 'lucide-react';
 import { employeeReportsService } from '../services/employeeReportsService';
 import { employeeTasksService } from '../../tasks/services/employeeTasksService';
+import { normalizeReport } from '@/lib/normalizers';
 import type { ReportType } from '@/types';
 
 export function SubmitReportForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const queryClient = useQueryClient();
+  const editId = searchParams.get('id');
+  const isEditMode = Boolean(editId);
+  const reportId = editId ? Number(editId) : null;
+
   const [reportType, setReportType] = useState<ReportType>('daily');
   const [taskId, setTaskId] = useState('');
   const [description, setDescription] = useState('');
   const [error, setError] = useState('');
+  const [hydrated, setHydrated] = useState(false);
 
   const { data: myTasks } = useQuery({
     queryKey: ['my-tasks'],
     queryFn: () => employeeTasksService.getMyTasks(),
   });
+
+  const { data: existingReport, isLoading: isLoadingReport } = useQuery({
+    queryKey: ['report', reportId],
+    queryFn: () => employeeReportsService.getReport(reportId as number),
+    enabled: isEditMode && reportId !== null,
+  });
+
+  useEffect(() => {
+    if (!existingReport || hydrated) return;
+    const r = normalizeReport(existingReport);
+    setReportType(r.reportType);
+    setDescription(r.description);
+    setTaskId(r.taskId ? String(r.taskId) : '');
+    setHydrated(true);
+  }, [existingReport, hydrated]);
 
   const submitMutation = useMutation({
     mutationFn: (payload: { reportType: ReportType; description: string; taskId?: number }) =>
@@ -35,24 +57,75 @@ export function SubmitReportForm() {
     },
   });
 
+  const resubmitMutation = useMutation({
+    mutationFn: (payload: { reportType: ReportType; description: string; taskId?: number | null }) =>
+      employeeReportsService.resubmitReport(reportId as number, payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['my-reports'] });
+      queryClient.invalidateQueries({ queryKey: ['report', reportId] });
+      router.push('/my-reports');
+    },
+    onError: (err: unknown) => {
+      const axiosErr = err as { response?: { data?: { error?: string } } };
+      setError(axiosErr?.response?.data?.error || 'Failed to resubmit report');
+    },
+  });
+
+  const isPending = submitMutation.isPending || resubmitMutation.isPending;
+
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setError('');
     if (!description.trim()) return;
-    submitMutation.mutate({
-      reportType,
-      description,
-      taskId: taskId ? Number(taskId) : undefined,
-    });
+
+    if (isEditMode && reportId) {
+      resubmitMutation.mutate({
+        reportType,
+        description,
+        taskId: taskId ? Number(taskId) : null,
+      });
+    } else {
+      submitMutation.mutate({
+        reportType,
+        description,
+        taskId: taskId ? Number(taskId) : undefined,
+      });
+    }
   };
 
   const handleSaveDraft = () => {
     alert('Draft saved locally. (Draft-saving endpoint not yet implemented on backend.)');
   };
 
+  if (isEditMode && isLoadingReport) {
+    return (
+      <Card>
+        <CardBody>
+          <div className="text-center py-12 text-[#71717a] text-sm">Loading report...</div>
+        </CardBody>
+      </Card>
+    );
+  }
+
+  const rejectionComment = existingReport
+    ? normalizeReport(existingReport).reviewComment
+    : undefined;
+  const rejectionReviewer = existingReport
+    ? normalizeReport(existingReport).reviewedByName
+    : undefined;
+
   return (
     <Card>
       <CardBody>
+        {isEditMode && rejectionComment && (
+          <div className="p-3 bg-danger-soft border border-danger/20 rounded-md mb-5">
+            <div className="text-[12px] text-danger font-medium mb-1">
+              Rejected{rejectionReviewer ? ` by ${rejectionReviewer}` : ''}
+            </div>
+            <div className="text-[12.5px] text-danger/90">&quot;{rejectionComment}&quot;</div>
+          </div>
+        )}
+
         <form onSubmit={handleSubmit} className="space-y-5">
           <div className="grid grid-cols-2 gap-4">
             <Select
@@ -99,27 +172,42 @@ export function SubmitReportForm() {
           <div className="p-3 bg-info-soft border border-info/20 rounded-md">
             <div className="text-[13px] text-info font-medium mb-1">📌 Approval Flow</div>
             <div className="text-[12.5px] text-info/90 leading-relaxed">
-              Your report goes to your <strong>Team Leader</strong> first. Once approved, it becomes
-              visible to the Super Admin.
+              {isEditMode ? (
+                <>
+                  Your revised report will be sent back to your <strong>Team Leader</strong> for
+                  review. Once approved, it becomes visible to the Super Admin.
+                </>
+              ) : (
+                <>
+                  Your report goes to your <strong>Team Leader</strong> first. Once approved, it
+                  becomes visible to the Super Admin.
+                </>
+              )}
             </div>
           </div>
 
           <div className="flex items-center justify-between pt-2 border-t border-border">
-            <Button type="button" variant="secondary" onClick={handleSaveDraft}>
-              <Save size={14} />
-              Save as Draft
-            </Button>
+            {isEditMode ? (
+              <span />
+            ) : (
+              <Button type="button" variant="secondary" onClick={handleSaveDraft}>
+                <Save size={14} />
+                Save as Draft
+              </Button>
+            )}
             <div className="flex gap-2">
               <Button type="button" variant="secondary" onClick={() => router.back()}>
                 Cancel
               </Button>
-              <Button
-                type="submit"
-                variant="primary"
-                disabled={submitMutation.isPending || !description.trim()}
-              >
-                <Send size={14} />
-                {submitMutation.isPending ? 'Submitting...' : 'Submit Report'}
+              <Button type="submit" variant="primary" disabled={isPending || !description.trim()}>
+                {isEditMode ? <RotateCcw size={14} /> : <Send size={14} />}
+                {isPending
+                  ? isEditMode
+                    ? 'Resubmitting...'
+                    : 'Submitting...'
+                  : isEditMode
+                  ? 'Resubmit Report'
+                  : 'Submit Report'}
               </Button>
             </div>
           </div>

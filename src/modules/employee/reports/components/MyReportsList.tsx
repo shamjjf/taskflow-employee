@@ -1,8 +1,9 @@
 'use client';
 
+import { useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { Card, Badge, Button } from '@/components/ui';
-import { Calendar, CheckCircle2, Clock, XCircle } from 'lucide-react';
+import { Calendar, CheckCircle2, Clock, RotateCcw, XCircle } from 'lucide-react';
 import { employeeReportsService } from '../services/employeeReportsService';
 import { normalizeReport } from '@/lib/normalizers';
 import type { Report } from '@/types';
@@ -18,6 +19,7 @@ function statusInfo(r: Report) {
 }
 
 export function MyReportsList() {
+  const router = useRouter();
   const { data, isLoading } = useQuery({
     queryKey: ['my-reports'],
     queryFn: () => employeeReportsService.getMyReports(),
@@ -94,7 +96,12 @@ export function MyReportsList() {
               )}
 
               {report.approvalStatus === 'rejected' && (
-                <Button variant="primary" size="sm">
+                <Button
+                  variant="primary"
+                  size="sm"
+                  onClick={() => router.push(`/submit-report?id=${report.id}`)}
+                >
+                  <RotateCcw size={12} />
                   Revise &amp; Resubmit
                 </Button>
               )}
