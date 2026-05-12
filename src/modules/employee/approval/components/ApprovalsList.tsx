@@ -27,6 +27,7 @@ function ApprovalCard({ report }: ApprovalCardProps) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['pending-approvals'] });
       queryClient.invalidateQueries({ queryKey: ['my-reports'] });
+      queryClient.invalidateQueries({ queryKey: ['department-reports'] });
     },
     onError: (err: unknown) => {
       const axiosErr = err as { response?: { data?: { error?: string } } };
@@ -39,6 +40,7 @@ function ApprovalCard({ report }: ApprovalCardProps) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['pending-approvals'] });
       queryClient.invalidateQueries({ queryKey: ['my-reports'] });
+      queryClient.invalidateQueries({ queryKey: ['department-reports'] });
       setAction(null);
       setRejectComment('');
     },
@@ -149,10 +151,10 @@ export function ApprovalsList() {
     queryFn: () => approvalService.listPending(),
   });
 
-  // Reviewed reports come from "my-reports" if we're the reviewer; use department reports
+  // Reviewed tab needs department-wide reports (so a TL sees reports they've already approved/rejected)
   const { data: allRaw } = useQuery({
-    queryKey: ['my-reports'],
-    queryFn: () => employeeReportsService.getMyReports(),
+    queryKey: ['department-reports'],
+    queryFn: () => employeeReportsService.getDepartmentReports(),
   });
 
   const pending = (pendingRaw || []).map(normalizeReport);

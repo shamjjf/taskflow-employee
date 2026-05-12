@@ -16,6 +16,11 @@ export interface ResubmitReportDto {
 
 export const employeeReportsService = {
   async getMyReports(): Promise<Report[]> {
+    const res = await api.get<ApiResponse<Report[]>>('/reports?scope=mine');
+    return res.data;
+  },
+
+  async getDepartmentReports(): Promise<Report[]> {
     const res = await api.get<ApiResponse<Report[]>>('/reports');
     return res.data;
   },
