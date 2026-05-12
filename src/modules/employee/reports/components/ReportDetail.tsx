@@ -100,14 +100,37 @@ export function ReportDetail({ reportId }: ReportDetailProps) {
             </div>
           </div>
 
-          <div className="bg-surface-muted border border-border rounded-md p-4 mb-4">
-            <div className="text-[11.5px] text-[#71717a] uppercase tracking-wider font-medium mb-2">
-              Report
+          {report.reportType === 'weekly' ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
+              <div className="bg-surface-muted border border-border rounded-md p-4">
+                <div className="text-[11.5px] text-[#71717a] uppercase tracking-wider font-medium mb-2">
+                  Weekly Objective
+                </div>
+                <div className="text-[14px] leading-relaxed whitespace-pre-wrap break-words">
+                  {report.weeklyObjective?.trim()
+                    ? report.weeklyObjective
+                    : <span className="text-[#a1a1aa] italic">No objective recorded.</span>}
+                </div>
+              </div>
+              <div className="bg-surface-muted border border-border rounded-md p-4">
+                <div className="text-[11.5px] text-[#71717a] uppercase tracking-wider font-medium mb-2">
+                  Weekly Work Summary
+                </div>
+                <div className="text-[14px] leading-relaxed whitespace-pre-wrap break-words">
+                  {report.description}
+                </div>
+              </div>
             </div>
-            <div className="text-[14px] leading-relaxed whitespace-pre-wrap break-words">
-              {report.description}
+          ) : (
+            <div className="bg-surface-muted border border-border rounded-md p-4 mb-4">
+              <div className="text-[11.5px] text-[#71717a] uppercase tracking-wider font-medium mb-2">
+                Report
+              </div>
+              <div className="text-[14px] leading-relaxed whitespace-pre-wrap break-words">
+                {report.description}
+              </div>
             </div>
-          </div>
+          )}
 
           {report.approvalStatus === 'rejected' && report.reviewComment && (
             <div className="p-3 bg-danger-soft border border-danger/20 rounded-md mb-4">

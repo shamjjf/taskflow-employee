@@ -100,6 +100,7 @@ export interface Report {
   departmentName: string;
   taskId?: number;
   reportType: ReportType;
+  weeklyObjective?: string;
   description: string;
   attachmentUrl?: string;
   reportDate: string;

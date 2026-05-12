@@ -20,6 +20,7 @@ export function SubmitReportForm() {
 
   const [reportType, setReportType] = useState<ReportType>('daily');
   const [taskId, setTaskId] = useState('');
+  const [weeklyObjective, setWeeklyObjective] = useState('');
   const [description, setDescription] = useState('');
   const [error, setError] = useState('');
   const [hydrated, setHydrated] = useState(false);
@@ -40,13 +41,18 @@ export function SubmitReportForm() {
     const r = normalizeReport(existingReport);
     setReportType(r.reportType);
     setDescription(r.description);
+    setWeeklyObjective(r.weeklyObjective ?? '');
     setTaskId(r.taskId ? String(r.taskId) : '');
     setHydrated(true);
   }, [existingReport, hydrated]);
 
   const submitMutation = useMutation({
-    mutationFn: (payload: { reportType: ReportType; description: string; taskId?: number }) =>
-      employeeReportsService.submitReport(payload),
+    mutationFn: (payload: {
+      reportType: ReportType;
+      weeklyObjective?: string;
+      description: string;
+      taskId?: number;
+    }) => employeeReportsService.submitReport(payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['my-reports'] });
       router.push('/my-reports');
@@ -58,8 +64,12 @@ export function SubmitReportForm() {
   });
 
   const resubmitMutation = useMutation({
-    mutationFn: (payload: { reportType: ReportType; description: string; taskId?: number | null }) =>
-      employeeReportsService.resubmitReport(reportId as number, payload),
+    mutationFn: (payload: {
+      reportType: ReportType;
+      weeklyObjective?: string | null;
+      description: string;
+      taskId?: number | null;
+    }) => employeeReportsService.resubmitReport(reportId as number, payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['my-reports'] });
       queryClient.invalidateQueries({ queryKey: ['report', reportId] });
@@ -77,16 +87,22 @@ export function SubmitReportForm() {
     e.preventDefault();
     setError('');
     if (!description.trim()) return;
+    if (reportType === 'weekly' && !weeklyObjective.trim()) {
+      setError('Please fill in the weekly objective.');
+      return;
+    }
 
     if (isEditMode && reportId) {
       resubmitMutation.mutate({
         reportType,
+        weeklyObjective: reportType === 'weekly' ? weeklyObjective : null,
         description,
         taskId: taskId ? Number(taskId) : null,
       });
     } else {
       submitMutation.mutate({
         reportType,
+        weeklyObjective: reportType === 'weekly' ? weeklyObjective : undefined,
         description,
         taskId: taskId ? Number(taskId) : undefined,
       });
@@ -151,12 +167,36 @@ export function SubmitReportForm() {
             )}
           </div>
 
+          {reportType === 'weekly' && (
+            <div>
+              <label className="block text-[13px] font-medium mb-1.5">Weekly Objective *</label>
+              <textarea
+                value={weeklyObjective}
+                onChange={(e) => setWeeklyObjective(e.target.value)}
+                placeholder="What were the goals or priorities you set for this week?"
+                rows={5}
+                required
+                className="w-full px-3 py-2.5 border border-border rounded-md bg-white focus:border-primary focus:ring-4 focus:ring-primary-soft focus:outline-none resize-none text-[13.5px] leading-relaxed"
+              />
+              <div className="flex justify-between mt-1.5 text-[11.5px] text-[#71717a]">
+                <span>State the planned objectives for the week.</span>
+                <span>{weeklyObjective.length} characters</span>
+              </div>
+            </div>
+          )}
+
           <div>
-            <label className="block text-[13px] font-medium mb-1.5">What did you work on? *</label>
+            <label className="block text-[13px] font-medium mb-1.5">
+              {reportType === 'weekly' ? 'Weekly Work Summary *' : 'What did you work on? *'}
+            </label>
             <textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="Describe your work in detail: what you completed, challenges faced, progress made, what's next..."
+              placeholder={
+                reportType === 'weekly'
+                  ? 'Summarize what you accomplished this week: deliverables, progress against objectives, blockers, next steps...'
+                  : "Describe your work in detail: what you completed, challenges faced, progress made, what's next..."
+              }
               rows={10}
               required
               className="w-full px-3 py-2.5 border border-border rounded-md bg-white focus:border-primary focus:ring-4 focus:ring-primary-soft focus:outline-none resize-none text-[13.5px] leading-relaxed"
@@ -199,7 +239,15 @@ export function SubmitReportForm() {
               <Button type="button" variant="secondary" onClick={() => router.back()}>
                 Cancel
               </Button>
-              <Button type="submit" variant="primary" disabled={isPending || !description.trim()}>
+              <Button
+                type="submit"
+                variant="primary"
+                disabled={
+                  isPending ||
+                  !description.trim() ||
+                  (reportType === 'weekly' && !weeklyObjective.trim())
+                }
+              >
                 {isEditMode ? <RotateCcw size={14} /> : <Send size={14} />}
                 {isPending
                   ? isEditMode

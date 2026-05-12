@@ -73,6 +73,7 @@ export function normalizeReport(raw: unknown): Report {
     user?: { id: number; name: string; department?: { name: string } };
     taskId?: number;
     reportType: 'daily' | 'weekly' | 'task';
+    weeklyObjective?: string | null;
     description: string;
     reportDate: string;
     approvalStatus: 'pending' | 'approved' | 'rejected';
@@ -95,6 +96,7 @@ export function normalizeReport(raw: unknown): Report {
     departmentName: r.user?.department?.name || '',
     taskId: r.taskId,
     reportType: r.reportType,
+    weeklyObjective: r.weeklyObjective ?? undefined,
     description: r.description,
     reportDate: dateLabel,
     approvalStatus: r.approvalStatus,

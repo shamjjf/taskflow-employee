@@ -3,6 +3,7 @@ import type { Report, ReportType, ApiResponse } from '@/types';
 
 export interface SubmitReportDto {
   reportType: ReportType;
+  weeklyObjective?: string;
   description: string;
   taskId?: number;
   reportDate?: string;
@@ -10,6 +11,7 @@ export interface SubmitReportDto {
 
 export interface ResubmitReportDto {
   reportType?: ReportType;
+  weeklyObjective?: string | null;
   description: string;
   taskId?: number | null;
 }
