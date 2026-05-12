@@ -1,14 +1,21 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { cn } from '@/lib/utils';
 import { Avatar, Badge, Button, Card, CardBody } from '@/components/ui';
-import { Check, X, MessageSquareText } from 'lucide-react';
+import { Check, Eye, X, MessageSquareText } from 'lucide-react';
 import { approvalService } from '../services/approvalService';
 import { employeeReportsService } from '../../reports/services/employeeReportsService';
 import { normalizeReport } from '@/lib/normalizers';
 import type { Report } from '@/types';
+
+const DESCRIPTION_PREVIEW_LIMIT = 250;
+function truncateDescription(text: string) {
+  if (text.length <= DESCRIPTION_PREVIEW_LIMIT) return text;
+  return `${text.slice(0, DESCRIPTION_PREVIEW_LIMIT).trimEnd()}...`;
+}
 
 type TabKey = 'pending' | 'reviewed';
 
@@ -17,6 +24,7 @@ interface ApprovalCardProps {
 }
 
 function ApprovalCard({ report }: ApprovalCardProps) {
+  const router = useRouter();
   const queryClient = useQueryClient();
   const [action, setAction] = useState<'approve' | 'reject' | null>(null);
   const [rejectComment, setRejectComment] = useState('');
@@ -76,7 +84,9 @@ function ApprovalCard({ report }: ApprovalCardProps) {
         </div>
 
         <div className="bg-surface-muted border border-border rounded-md p-3 mb-4">
-          <div className="text-[13.5px] leading-relaxed">{report.description}</div>
+          <div className="text-[13.5px] leading-relaxed whitespace-pre-wrap break-words">
+            {truncateDescription(report.description)}
+          </div>
         </div>
 
         {error && <div className="text-xs text-danger mb-2">{error}</div>}
@@ -120,7 +130,7 @@ function ApprovalCard({ report }: ApprovalCardProps) {
             </div>
           </div>
         ) : (
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <Button
               variant="primary"
               size="sm"
@@ -136,6 +146,14 @@ function ApprovalCard({ report }: ApprovalCardProps) {
               <X size={12} />
               Reject
             </Button>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => router.push(`/report/${report.id}`)}
+            >
+              <Eye size={12} />
+              View Report
+            </Button>
           </div>
         )}
       </CardBody>
@@ -144,6 +162,7 @@ function ApprovalCard({ report }: ApprovalCardProps) {
 }
 
 export function ApprovalsList() {
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState<TabKey>('pending');
 
   const { data: pendingRaw, isLoading: loadingPending } = useQuery({
@@ -237,14 +256,24 @@ export function ApprovalsList() {
                     </div>
                   </div>
                 </div>
-                <div className="text-[13px] leading-relaxed text-[#71717a] mt-2">
-                  {report.description}
+                <div className="text-[13px] leading-relaxed text-[#71717a] mt-2 whitespace-pre-wrap break-words">
+                  {truncateDescription(report.description)}
                 </div>
                 {report.approvalStatus === 'rejected' && report.reviewComment && (
                   <div className="mt-3 text-[12.5px] text-danger bg-danger-soft border border-danger/20 rounded-md p-2.5">
                     <strong>Rejection reason:</strong> {report.reviewComment}
                   </div>
                 )}
+                <div className="mt-3">
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => router.push(`/report/${report.id}`)}
+                  >
+                    <Eye size={12} />
+                    View Report
+                  </Button>
+                </div>
               </div>
             )
           )}

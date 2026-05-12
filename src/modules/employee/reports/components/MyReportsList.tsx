@@ -3,7 +3,13 @@
 import { useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { Card, Badge, Button } from '@/components/ui';
-import { Calendar, CheckCircle2, Clock, RotateCcw, XCircle } from 'lucide-react';
+import { Calendar, CheckCircle2, Clock, Eye, RotateCcw, XCircle } from 'lucide-react';
+
+const DESCRIPTION_PREVIEW_LIMIT = 250;
+function truncateDescription(text: string) {
+  if (text.length <= DESCRIPTION_PREVIEW_LIMIT) return text;
+  return `${text.slice(0, DESCRIPTION_PREVIEW_LIMIT).trimEnd()}...`;
+}
 import { employeeReportsService } from '../services/employeeReportsService';
 import { normalizeReport } from '@/lib/normalizers';
 import type { Report } from '@/types';
@@ -75,8 +81,8 @@ export function MyReportsList() {
                 </div>
               </div>
 
-              <div className="text-[13.5px] text-[#18181b] leading-relaxed mb-3">
-                {report.description}
+              <div className="text-[13.5px] text-[#18181b] leading-relaxed mb-3 whitespace-pre-wrap break-words">
+                {truncateDescription(report.description)}
               </div>
 
               {report.approvalStatus === 'rejected' && report.reviewComment && (
@@ -89,22 +95,32 @@ export function MyReportsList() {
               )}
 
               {report.approvalStatus === 'approved' && report.visibleToSuperAdmin && (
-                <div className="text-[12px] text-success flex items-center gap-1">
+                <div className="text-[12px] text-success flex items-center gap-1 mb-3">
                   <CheckCircle2 size={12} />
                   <span>Visible to Super Admin</span>
                 </div>
               )}
 
-              {report.approvalStatus === 'rejected' && (
+              <div className="flex flex-wrap gap-2">
                 <Button
-                  variant="primary"
+                  variant="secondary"
                   size="sm"
-                  onClick={() => router.push(`/submit-report?id=${report.id}`)}
+                  onClick={() => router.push(`/report/${report.id}`)}
                 >
-                  <RotateCcw size={12} />
-                  Revise &amp; Resubmit
+                  <Eye size={12} />
+                  View Report
                 </Button>
-              )}
+                {report.approvalStatus === 'rejected' && (
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    onClick={() => router.push(`/submit-report?id=${report.id}`)}
+                  >
+                    <RotateCcw size={12} />
+                    Revise &amp; Resubmit
+                  </Button>
+                )}
+              </div>
             </div>
           </Card>
         );
