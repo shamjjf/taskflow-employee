@@ -1,5 +1,6 @@
 'use client';
 
+import NextImage from 'next/image';
 import { FileText, Image as ImageIcon, FileArchive, Download, X, File as FileIcon } from 'lucide-react';
 import { uploadService } from '@/lib/uploadService';
 
@@ -68,9 +69,12 @@ export function AttachmentChip({
     return (
       <div className="relative inline-block group">
         <a href={fullUrl} target="_blank" rel="noopener noreferrer">
-          <img
+          <NextImage
             src={fullUrl}
             alt={displayName}
+            width={200}
+            height={200}
+            unoptimized
             className="max-w-[200px] max-h-[200px] rounded-md border border-border object-cover"
           />
         </a>

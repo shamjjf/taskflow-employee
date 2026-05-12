@@ -93,6 +93,42 @@ export function useAgoraCall() {
   }, []);
 
   /* ============================================================
+   * INTERNAL HELPERS — declared early so socket handlers can use them
+   * ============================================================ */
+
+  /** Tear down Agora + reset store. Used on hangup, reject, error. */
+  const cleanupCall = useCallback(async () => {
+    try {
+      await agoraRTC.leave();
+    } catch (err) {
+      console.error('[Call] Cleanup error:', err);
+    }
+    useCallStore.getState().endCall();
+
+    // After 2 seconds, fully reset to idle
+    setTimeout(() => {
+      const status = useCallStore.getState().status;
+      if (status === 'ended') {
+        useCallStore.getState().reset();
+      }
+    }, 2000);
+  }, []);
+
+  /** Get token + join Agora channel. Used by both startCall and acceptCall. */
+  const joinChannel = useCallback(
+    async (channelName: string, callType: CallType) => {
+      const tokenRes = await agoraApi.getToken(channelName);
+      await agoraRTC.join({
+        token: tokenRes.token,
+        channelName: tokenRes.channelName,
+        uid: tokenRes.uid,
+        callType,
+      });
+    },
+    []
+  );
+
+  /* ============================================================
    * SOCKET LISTENERS — receive signaling events
    * ============================================================ */
 
@@ -163,7 +199,7 @@ export function useAgoraCall() {
 
     console.log('[Call] Rejected by user', payload.rejectedBy);
     cleanupCall();
-  }, []));
+  }, [cleanupCall]));
 
   // 🛑 Someone ended the call. For 1-on-1 calls, both sides drop. For group
   // calls we ignore this — the FE only sends a leave broadcast for 1-on-1
@@ -179,43 +215,7 @@ export function useAgoraCall() {
 
     console.log('[Call] Ended by user', payload.endedBy);
     cleanupCall();
-  }, []));
-
-  /* ============================================================
-   * INTERNAL HELPERS
-   * ============================================================ */
-
-  /** Tear down Agora + reset store. Used on hangup, reject, error. */
-  const cleanupCall = useCallback(async () => {
-    try {
-      await agoraRTC.leave();
-    } catch (err) {
-      console.error('[Call] Cleanup error:', err);
-    }
-    useCallStore.getState().endCall();
-
-    // After 2 seconds, fully reset to idle
-    setTimeout(() => {
-      const status = useCallStore.getState().status;
-      if (status === 'ended') {
-        useCallStore.getState().reset();
-      }
-    }, 2000);
-  }, []);
-
-  /** Get token + join Agora channel. Used by both startCall and acceptCall. */
-  const joinChannel = useCallback(
-    async (channelName: string, callType: CallType) => {
-      const tokenRes = await agoraApi.getToken(channelName);
-      await agoraRTC.join({
-        token: tokenRes.token,
-        channelName: tokenRes.channelName,
-        uid: tokenRes.uid,
-        callType,
-      });
-    },
-    []
-  );
+  }, [cleanupCall]));
 
   /* ============================================================
    * PUBLIC ACTIONS — these are what UI components call
