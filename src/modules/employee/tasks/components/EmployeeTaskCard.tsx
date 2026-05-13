@@ -74,19 +74,19 @@ export function EmployeeTaskCard({
     <div
       onClick={goToDetail}
       className={cn(
-        'bg-white border rounded-lg p-5 transition-all cursor-pointer',
+        'bg-white border rounded-lg p-3.5 sm:p-5 transition-all cursor-pointer',
         isOverdue
           ? 'border-danger/30 hover:border-danger hover:shadow-md'
           : 'border-border hover:border-primary hover:shadow-md'
       )}
     >
-      <div className="flex items-start justify-between gap-4 mb-3">
+      <div className="flex items-start justify-between gap-2.5 sm:gap-4 mb-3">
         <div className="flex-1 min-w-0">
-          <div className="text-[15px] font-semibold mb-1.5 hover:text-primary transition-colors">
+          <div className="text-[14px] sm:text-[15px] font-semibold mb-1 sm:mb-1.5 hover:text-primary transition-colors break-words">
             {task.title}
           </div>
           {task.description && (
-            <div className="text-[13px] text-[#71717a] leading-relaxed line-clamp-2">
+            <div className="text-[12.5px] sm:text-[13px] text-[#71717a] leading-relaxed line-clamp-2">
               {task.description}
             </div>
           )}
@@ -94,29 +94,29 @@ export function EmployeeTaskCard({
         <Badge variant={status.variant}>{status.label}</Badge>
       </div>
 
-      <div className="flex items-center gap-3 mb-3 flex-wrap">
+      <div className="flex items-center gap-2 sm:gap-3 mb-3 flex-wrap">
         <span
           className={cn(
-            'inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11.5px] font-medium border',
+            'inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] sm:text-[11.5px] font-medium border',
             priorityStyles[task.priority]
           )}
         >
           {TASK_PRIORITY_LABELS[task.priority]} Priority
         </span>
-        <div className="flex items-center gap-1 text-[11.5px] text-[#71717a]">
+        <div className="flex items-center gap-1 text-[11px] sm:text-[11.5px] text-[#71717a]">
           <Calendar size={12} />
           <span>Due: {task.deadlineLabel}</span>
         </div>
       </div>
 
       {/* Detailed timeline */}
-      <div className="grid grid-cols-3 gap-3 mb-4 pb-3 border-b border-border">
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 sm:gap-3 mb-3 sm:mb-4 pb-3 border-b border-border">
         <div>
           <div className="flex items-center gap-1 text-[10.5px] text-[#71717a] uppercase tracking-wider font-medium mb-0.5">
             <CalendarClock size={11} />
             Assigned
           </div>
-          <div className="text-[12px] font-medium">{formatDateTime(task.createdAt)}</div>
+          <div className="text-[11.5px] sm:text-[12px] font-medium">{formatDateTime(task.createdAt)}</div>
         </div>
         {task.startedAt && (
           <div>
@@ -124,7 +124,7 @@ export function EmployeeTaskCard({
               <Play size={10} />
               Started
             </div>
-            <div className="text-[12px] font-medium">{formatDateTime(task.startedAt)}</div>
+            <div className="text-[11.5px] sm:text-[12px] font-medium">{formatDateTime(task.startedAt)}</div>
           </div>
         )}
         {task.completedAt && (
@@ -133,7 +133,7 @@ export function EmployeeTaskCard({
               <CheckCircle2 size={10} />
               Completed
             </div>
-            <div className="text-[12px] font-medium text-success">{formatDateTime(task.completedAt)}</div>
+            <div className="text-[11.5px] sm:text-[12px] font-medium text-success">{formatDateTime(task.completedAt)}</div>
           </div>
         )}
         {!task.startedAt && !task.completedAt && task.deadline && (
@@ -142,18 +142,18 @@ export function EmployeeTaskCard({
               <Clock size={11} />
               Deadline
             </div>
-            <div className={cn('text-[12px] font-medium', isOverdue && 'text-danger')}>
+            <div className={cn('text-[11.5px] sm:text-[12px] font-medium', isOverdue && 'text-danger')}>
               {formatDateTime(task.deadline)}
             </div>
           </div>
         )}
       </div>
 
-      <div className="flex items-center justify-between">
-        <div className="text-[11.5px] text-[#71717a]">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5 sm:gap-3">
+        <div className="text-[11px] sm:text-[11.5px] text-[#71717a]">
           {task.createdByName ? `Assigned by ${task.createdByName}` : 'Click to view & comment'}
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <Button
             variant="secondary"
             size="sm"
@@ -163,7 +163,8 @@ export function EmployeeTaskCard({
             }}
           >
             <MessageSquare size={12} />
-            View & Comment
+            <span className="hidden sm:inline">View & Comment</span>
+            <span className="sm:hidden">View</span>
           </Button>
           {isTeamLeader ? (
             task.status === 'in_review' && (
