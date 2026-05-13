@@ -75,9 +75,17 @@ export function EmployeeSidebar({ collapsed, onToggle }: EmployeeSidebarProps) {
   ];
 
   return (
+    <>
+      {!collapsed && (
+        <div
+          onClick={onToggle}
+          aria-hidden="true"
+          className="md:hidden fixed inset-0 bg-black/30 z-30"
+        />
+      )}
     <aside
       className={cn(
-        'bg-white border-r border-border flex flex-col fixed h-screen overflow-y-auto transition-[width] duration-200',
+        'bg-white border-r border-border flex flex-col fixed h-screen overflow-y-auto transition-[width] duration-200 z-40',
         collapsed ? 'w-16' : 'w-48 md:w-52 lg:w-60'
       )}
     >
@@ -150,6 +158,11 @@ export function EmployeeSidebar({ collapsed, onToggle }: EmployeeSidebarProps) {
                   key={item.href}
                   href={item.href}
                   title={collapsed ? item.label : undefined}
+                  onClick={() => {
+                    if (!collapsed && typeof window !== 'undefined' && window.innerWidth < 768) {
+                      onToggle();
+                    }
+                  }}
                   className={cn(
                     'flex items-center rounded-md text-[13.5px] font-medium transition-all mb-0.5 relative',
                     collapsed
@@ -183,5 +196,6 @@ export function EmployeeSidebar({ collapsed, onToggle }: EmployeeSidebarProps) {
         ))}
       </nav>
     </aside>
+    </>
   );
 }
