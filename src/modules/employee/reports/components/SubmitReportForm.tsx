@@ -134,16 +134,16 @@ export function SubmitReportForm() {
     <Card>
       <CardBody>
         {isEditMode && rejectionComment && (
-          <div className="p-3 bg-danger-soft border border-danger/20 rounded-md mb-5">
-            <div className="text-[12px] text-danger font-medium mb-1">
+          <div className="p-2.5 sm:p-3 bg-danger-soft border border-danger/20 rounded-md mb-4 sm:mb-5">
+            <div className="text-[11px] sm:text-[12px] text-danger font-medium mb-1">
               Rejected{rejectionReviewer ? ` by ${rejectionReviewer}` : ''}
             </div>
-            <div className="text-[12.5px] text-danger/90">&quot;{rejectionComment}&quot;</div>
+            <div className="text-[11.5px] sm:text-[12.5px] text-danger/90">&quot;{rejectionComment}&quot;</div>
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-5">
-          <div className="grid grid-cols-2 gap-4">
+        <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
             <Select
               label="Report Type *"
               value={reportType}
@@ -169,16 +169,16 @@ export function SubmitReportForm() {
 
           {reportType === 'weekly' && (
             <div>
-              <label className="block text-[13px] font-medium mb-1.5">Weekly Objective *</label>
+              <label className="block text-[12px] sm:text-[13px] font-medium mb-1.5">Weekly Objective *</label>
               <textarea
                 value={weeklyObjective}
                 onChange={(e) => setWeeklyObjective(e.target.value)}
                 placeholder="What were the goals or priorities you set for this week?"
                 rows={5}
                 required
-                className="w-full px-3 py-2.5 border border-border rounded-md bg-white focus:border-primary focus:ring-4 focus:ring-primary-soft focus:outline-none resize-none text-[13.5px] leading-relaxed"
+                className="w-full px-3 py-2 sm:py-2.5 border border-border rounded-md bg-white focus:border-primary focus:ring-4 focus:ring-primary-soft focus:outline-none resize-none text-[12.5px] sm:text-[13.5px] leading-relaxed"
               />
-              <div className="flex justify-between mt-1.5 text-[11.5px] text-[#71717a]">
+              <div className="flex justify-between mt-1.5 text-[10.5px] sm:text-[11.5px] text-[#71717a]">
                 <span>State the planned objectives for the week.</span>
                 <span>{weeklyObjective.length} characters</span>
               </div>
@@ -186,7 +186,7 @@ export function SubmitReportForm() {
           )}
 
           <div>
-            <label className="block text-[13px] font-medium mb-1.5">
+            <label className="block text-[12px] sm:text-[13px] font-medium mb-1.5">
               {reportType === 'weekly' ? 'Weekly Work Summary *' : 'What did you work on? *'}
             </label>
             <textarea
@@ -199,9 +199,9 @@ export function SubmitReportForm() {
               }
               rows={10}
               required
-              className="w-full px-3 py-2.5 border border-border rounded-md bg-white focus:border-primary focus:ring-4 focus:ring-primary-soft focus:outline-none resize-none text-[13.5px] leading-relaxed"
+              className="w-full px-3 py-2 sm:py-2.5 border border-border rounded-md bg-white focus:border-primary focus:ring-4 focus:ring-primary-soft focus:outline-none resize-none text-[12.5px] sm:text-[13.5px] leading-relaxed"
             />
-            <div className="flex justify-between mt-1.5 text-[11.5px] text-[#71717a]">
+            <div className="flex justify-between mt-1.5 text-[10.5px] sm:text-[11.5px] text-[#71717a]">
               <span>Be specific. Your Team Leader will review this.</span>
               <span>{description.length} characters</span>
             </div>
@@ -209,9 +209,9 @@ export function SubmitReportForm() {
 
           {error && <div className="text-xs text-danger">{error}</div>}
 
-          <div className="p-3 bg-info-soft border border-info/20 rounded-md">
-            <div className="text-[13px] text-info font-medium mb-1">📌 Approval Flow</div>
-            <div className="text-[12.5px] text-info/90 leading-relaxed">
+          <div className="p-2.5 sm:p-3 bg-info-soft border border-info/20 rounded-md">
+            <div className="text-[12px] sm:text-[13px] text-info font-medium mb-1">📌 Approval Flow</div>
+            <div className="text-[11.5px] sm:text-[12.5px] text-info/90 leading-relaxed">
               {isEditMode ? (
                 <>
                   Your revised report will be sent back to your <strong>Team Leader</strong> for
@@ -226,17 +226,29 @@ export function SubmitReportForm() {
             </div>
           </div>
 
-          <div className="flex items-center justify-between pt-2 border-t border-border">
+          <div className="flex items-center justify-between gap-2 pt-2 border-t border-border">
             {isEditMode ? (
               <span />
             ) : (
-              <Button type="button" variant="secondary" onClick={handleSaveDraft}>
-                <Save size={14} />
-                Save as Draft
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={handleSaveDraft}
+                className="!px-2.5 !py-1.5 !text-[11.5px] sm:!px-3.5 sm:!py-2 sm:!text-[13px]"
+              >
+                <Save size={12} className="sm:hidden" />
+                <Save size={14} className="hidden sm:block" />
+                <span className="sm:hidden">Draft</span>
+                <span className="hidden sm:inline">Save as Draft</span>
               </Button>
             )}
-            <div className="flex gap-2">
-              <Button type="button" variant="secondary" onClick={() => router.back()}>
+            <div className="flex gap-1.5 sm:gap-2">
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => router.back()}
+                className="!px-2.5 !py-1.5 !text-[11.5px] sm:!px-3.5 sm:!py-2 sm:!text-[13px]"
+              >
                 Cancel
               </Button>
               <Button
@@ -247,15 +259,27 @@ export function SubmitReportForm() {
                   !description.trim() ||
                   (reportType === 'weekly' && !weeklyObjective.trim())
                 }
+                className="!px-2.5 !py-1.5 !text-[11.5px] sm:!px-3.5 sm:!py-2 sm:!text-[13px]"
               >
-                {isEditMode ? <RotateCcw size={14} /> : <Send size={14} />}
+                {isEditMode ? (
+                  <>
+                    <RotateCcw size={12} className="sm:hidden" />
+                    <RotateCcw size={14} className="hidden sm:block" />
+                  </>
+                ) : (
+                  <>
+                    <Send size={12} className="sm:hidden" />
+                    <Send size={14} className="hidden sm:block" />
+                  </>
+                )}
                 {isPending
                   ? isEditMode
                     ? 'Resubmitting...'
                     : 'Submitting...'
                   : isEditMode
-                  ? 'Resubmit Report'
-                  : 'Submit Report'}
+                  ? 'Resubmit'
+                  : 'Submit'}
+                <span className="hidden sm:inline"> Report</span>
               </Button>
             </div>
           </div>
