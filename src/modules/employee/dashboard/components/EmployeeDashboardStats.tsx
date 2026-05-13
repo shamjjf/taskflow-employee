@@ -18,7 +18,7 @@ export function EmployeeDashboardStats() {
   const completed = tasks.filter((t) => t.status === 'completed').length;
 
   return (
-    <div className="grid grid-cols-4 gap-4 mb-6">
+    <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5 sm:gap-4 mb-5 sm:mb-6">
       <StatCard label="Total Tasks" value={total} icon={ClipboardList} />
       <StatCard label="To Do" value={toDo} icon={AlertCircle} />
       <StatCard label="In Progress" value={inProgress} icon={Play} />

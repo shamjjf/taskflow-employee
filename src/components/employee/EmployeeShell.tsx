@@ -57,7 +57,7 @@ export function EmployeeShell({ children }: EmployeeShellProps) {
         )}
       >
         <EmployeeTopbar />
-        <main className="flex-1 px-8 py-7 overflow-y-auto">{children}</main>
+        <main className="flex-1 px-3 py-4 sm:px-8 sm:py-7 overflow-y-auto">{children}</main>
       </div>
       <AssignTaskModal />
 
