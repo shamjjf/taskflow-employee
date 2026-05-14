@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { Card, CardBody, Avatar, Badge, Button } from '@/components/ui';
-import { MessageSquare, Mail, BarChart3 } from 'lucide-react';
+import { MessageSquare, Mail, BarChart3, TrendingUp } from 'lucide-react';
 import { api } from '@/lib/api';
 import { useRole } from '@/hooks/useRole';
 import { useAuthStore } from '@/store/authStore';
@@ -122,7 +122,11 @@ export function MyTeamList() {
               : `Team Members (${teamMembers.length})`}
           </h2>
           {isTeamLeader && (
-            <Button variant="secondary" size="sm">
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => router.push('/team/performance')}
+            >
               <BarChart3 size={12} />
               View Performance
             </Button>
@@ -163,6 +167,15 @@ export function MyTeamList() {
                     </div>
                     {!isMe && (
                       <div className="flex gap-1.5 shrink-0">
+                        {isTeamLeader && (
+                          <button
+                            onClick={() => router.push(`/team/performance/${member.id}`)}
+                            className="w-9 h-9 rounded-md flex items-center justify-center text-[#71717a] bg-surface-muted hover:bg-[#e4e4e7] hover:text-[#18181b] transition-colors"
+                            title="View performance"
+                          >
+                            <TrendingUp size={14} />
+                          </button>
+                        )}
                         <button
                           onClick={() => startChat(member)}
                           disabled={startingChatWithId === member.id}
