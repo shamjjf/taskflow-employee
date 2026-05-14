@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useMemo, useEffect, useRef } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { Avatar, Button, Modal } from '@/components/ui';
 import { AttachmentChip } from '@/components/shared';
@@ -45,6 +46,9 @@ interface ConversationDTO {
 
 export function ChatLayout() {
   const queryClient = useQueryClient();
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const convParam = searchParams.get('conv');
   const currentUser = useAuthStore((s) => s.user);
   const { startCall, status: callStatus } = useAgoraCall();
   const [activeId, setActiveId] = useState<number | null>(null);
@@ -86,12 +90,26 @@ export function ChatLayout() {
   });
 
   useEffect(() => {
-    if (conversations && conversations.length > 0 && activeId === null) {
+    if (!conversations || conversations.length === 0) return;
+
+    if (convParam) {
+      const id = Number(convParam);
+      if (!Number.isNaN(id) && conversations.some((c) => c.id === id)) {
+        setActiveId(id);
+        setMobileView('chat');
+        router.replace('/chat');
+      }
+      // If the requested conv isn't in the list yet, wait for the refetch
+      // to bring it in rather than falling back to the first conversation.
+      return;
+    }
+
+    if (activeId === null) {
       // Preselect first conversation for desktop split view. Mobile stays on
       // the list — user must tap a chat to enter it (default messenger UX).
       setActiveId(conversations[0].id);
     }
-  }, [conversations, activeId]);
+  }, [conversations, activeId, convParam, router]);
 
   const openConversation = (id: number) => {
     setActiveId(id);
