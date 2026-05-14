@@ -48,7 +48,7 @@ export function NotificationsList() {
     queryClient.invalidateQueries({ queryKey: ['notifications'] });
   };
 
-  const notifications = data || [];
+  const notifications = useMemo(() => data || [], [data]);
 
   const filtered = useMemo(() => {
     if (!filter) return notifications;
