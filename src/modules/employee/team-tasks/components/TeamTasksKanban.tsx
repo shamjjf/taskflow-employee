@@ -101,9 +101,9 @@ export function TeamTasksKanban() {
       {isLoading ? (
         <div className="text-center py-12 text-[#71717a]">Loading team tasks...</div>
       ) : (
-        <div className="grid grid-cols-5 gap-3.5">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3.5">
           {COLUMNS.map((status) => (
-            <div key={status} className="bg-surface-muted rounded-lg p-3 min-h-[400px]">
+            <div key={status} className="bg-surface-muted rounded-lg p-3 lg:min-h-[400px]">
               <div className="flex items-center justify-between px-1.5 pb-3 text-[12.5px] font-semibold text-[#71717a] uppercase tracking-wider">
                 <span>{TASK_STATUS_LABELS[status]}</span>
                 <span className="bg-white text-[#71717a] px-1.5 py-px rounded-full text-[11px]">
@@ -113,42 +113,50 @@ export function TeamTasksKanban() {
               {grouped[status].length === 0 ? (
                 <div className="text-center py-5 text-[#a1a1aa] text-xs">No tasks</div>
               ) : (
-                grouped[status].map((task) => (
-                  <div
-                    key={task.id}
-                    role="button"
-                    tabIndex={0}
-                    onClick={() => setSelectedTaskId(task.id)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' || e.key === ' ') {
-                        e.preventDefault();
-                        setSelectedTaskId(task.id);
-                      }
-                    }}
-                    className="bg-white border border-border rounded-md p-3 mb-2 cursor-pointer transition-all hover:border-border-strong hover:shadow-sm focus:outline-none focus:ring-2 focus:ring-[#6366f1]/40"
-                  >
-                    <div className="text-[13px] font-medium mb-2 leading-snug">{task.title}</div>
-                    <div className="flex gap-1.5 mb-2 flex-wrap">
-                      <span
-                        className={cn(
-                          'inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs font-medium',
-                          priorityStyles[task.priority as TaskPriority]
-                        )}
-                      >
-                        {TASK_PRIORITY_LABELS[task.priority]}
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between text-[11.5px] text-[#71717a] pt-2 border-t border-border">
-                      <div className="flex items-center gap-1.5">
-                        {task.assignees.map((a) => (
-                          <Avatar key={a.id} initials={a.initials} color={a.color} size="sm" />
-                        ))}
-                        <span>{task.assignees.map((a) => a.name.split(' ')[0]).join(', ')}</span>
+                <div
+                  className={
+                    grouped[status].length > 7
+                      ? 'max-h-[700px] overflow-y-auto pr-1 -mr-1'
+                      : ''
+                  }
+                >
+                  {grouped[status].map((task) => (
+                    <div
+                      key={task.id}
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => setSelectedTaskId(task.id)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          setSelectedTaskId(task.id);
+                        }
+                      }}
+                      className="bg-white border border-border rounded-md p-3 mb-2 cursor-pointer transition-all hover:border-border-strong hover:shadow-sm focus:outline-none focus:ring-2 focus:ring-[#6366f1]/40"
+                    >
+                      <div className="text-[13px] font-medium mb-2 leading-snug">{task.title}</div>
+                      <div className="flex gap-1.5 mb-2 flex-wrap">
+                        <span
+                          className={cn(
+                            'inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs font-medium',
+                            priorityStyles[task.priority as TaskPriority]
+                          )}
+                        >
+                          {TASK_PRIORITY_LABELS[task.priority]}
+                        </span>
                       </div>
-                      <span>{task.deadlineLabel}</span>
+                      <div className="flex items-center justify-between text-[11.5px] text-[#71717a] pt-2 border-t border-border">
+                        <div className="flex items-center gap-1.5">
+                          {task.assignees.map((a) => (
+                            <Avatar key={a.id} initials={a.initials} color={a.color} size="sm" />
+                          ))}
+                          <span>{task.assignees.map((a) => a.name.split(' ')[0]).join(', ')}</span>
+                        </div>
+                        <span>{task.deadlineLabel}</span>
+                      </div>
                     </div>
-                  </div>
-                ))
+                  ))}
+                </div>
               )}
             </div>
           ))}

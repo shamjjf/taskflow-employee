@@ -27,7 +27,7 @@ export function UpcomingDeadlines() {
           upcoming.map((task, i) => (
             <div
               key={task.id}
-              className={`flex items-center gap-3 px-5 py-3 ${
+              className={`flex items-start gap-3 px-4 sm:px-5 py-3 ${
                 i < upcoming.length - 1 ? 'border-b border-border' : ''
               }`}
             >
@@ -43,8 +43,8 @@ export function UpcomingDeadlines() {
                 <Calendar size={14} />
               </div>
               <div className="flex-1 min-w-0">
-                <div className="text-[13px] font-medium truncate">{task.title}</div>
-                <div className="text-[11.5px] text-[#71717a]">Due: {task.deadlineLabel}</div>
+                <div className="text-[12.5px] sm:text-[13px] font-medium break-words">{task.title}</div>
+                <div className="text-[11px] sm:text-[11.5px] text-[#71717a] mt-0.5">Due: {task.deadlineLabel}</div>
               </div>
               <Badge
                 variant={

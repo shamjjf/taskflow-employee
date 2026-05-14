@@ -1,10 +1,11 @@
 'use client';
 
 import { useState, useMemo, useEffect, useRef } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { Avatar, Button, Modal } from '@/components/ui';
 import { AttachmentChip } from '@/components/shared';
-import { Search, Phone, Video, Paperclip, Send, Plus, Users, UsersRound } from 'lucide-react';
+import { Search, Phone, Video, Paperclip, Send, Plus, Users, UsersRound, ArrowLeft } from 'lucide-react';
 import { cn, getInitials } from '@/lib/utils';
 import { chatService } from '../services/chatService';
 import { DepartmentGroupChatManager } from './DepartmentGroupChatManager';
@@ -45,9 +46,13 @@ interface ConversationDTO {
 
 export function ChatLayout() {
   const queryClient = useQueryClient();
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const convParam = searchParams.get('conv');
   const currentUser = useAuthStore((s) => s.user);
   const { startCall, status: callStatus } = useAgoraCall();
   const [activeId, setActiveId] = useState<number | null>(null);
+  const [mobileView, setMobileView] = useState<'list' | 'chat'>('list');
   const [input, setInput] = useState('');
   const [sending, setSending] = useState(false);
   const [attachment, setAttachment] = useState<UploadedFile | null>(null);
@@ -85,10 +90,31 @@ export function ChatLayout() {
   });
 
   useEffect(() => {
-    if (conversations && conversations.length > 0 && activeId === null) {
+    if (!conversations || conversations.length === 0) return;
+
+    if (convParam) {
+      const id = Number(convParam);
+      if (!Number.isNaN(id) && conversations.some((c) => c.id === id)) {
+        setActiveId(id);
+        setMobileView('chat');
+        router.replace('/chat');
+      }
+      // If the requested conv isn't in the list yet, wait for the refetch
+      // to bring it in rather than falling back to the first conversation.
+      return;
+    }
+
+    if (activeId === null) {
+      // Preselect first conversation for desktop split view. Mobile stays on
+      // the list — user must tap a chat to enter it (default messenger UX).
       setActiveId(conversations[0].id);
     }
-  }, [conversations, activeId]);
+  }, [conversations, activeId, convParam, router]);
+
+  const openConversation = (id: number) => {
+    setActiveId(id);
+    setMobileView('chat');
+  };
 
   const { data: messagesRaw } = useQuery({
     queryKey: ['messages', activeId],
@@ -209,7 +235,7 @@ export function ChatLayout() {
     try {
       const conv = await chatService.findOrCreateDirect(member.id, member.name);
       queryClient.invalidateQueries({ queryKey: ['conversations'] });
-      setActiveId(conv.id);
+      openConversation(conv.id);
       setShowNewChatModal(false);
       setMemberSearch('');
     } catch (err) {
@@ -238,7 +264,7 @@ export function ChatLayout() {
     },
     onSuccess: (conversation) => {
       queryClient.invalidateQueries({ queryKey: ['conversations'] });
-      setActiveId(conversation.id);
+      openConversation(conversation.id);
       setShowCreateGroupModal(false);
     },
     onError: (err) => {
@@ -345,8 +371,13 @@ export function ChatLayout() {
 
   return (
     <>
-      <div className="grid grid-cols-[280px_1fr] h-[calc(100vh-140px)] bg-white border border-border rounded-lg overflow-hidden">
-        <div className="border-r border-border flex flex-col min-h-0 overflow-hidden">
+      <div className="grid grid-cols-1 md:grid-cols-[280px_1fr] h-[calc(100dvh-56px)] md:h-[calc(100vh-140px)] -mx-3 -my-4 sm:-mx-8 sm:-my-7 md:mx-0 md:my-0 bg-white border-0 md:border md:border-border md:rounded-lg overflow-hidden">
+        <div
+          className={cn(
+            'border-border md:border-r flex-col min-h-0 overflow-hidden',
+            mobileView === 'chat' ? 'hidden md:flex' : 'flex'
+          )}
+        >
           <div className="p-3 border-b border-border space-y-2">
             <Button
               variant="primary"
@@ -401,7 +432,7 @@ export function ChatLayout() {
                 return (
                   <div
                     key={c.id}
-                    onClick={() => setActiveId(c.id)}
+                    onClick={() => openConversation(c.id)}
                     className={cn(
                       'flex gap-2.5 px-3.5 py-3 border-b border-border cursor-pointer transition-colors',
                       isActive ? 'bg-primary-soft' : 'hover:bg-surface-muted'
@@ -421,10 +452,23 @@ export function ChatLayout() {
           </div>
         </div>
 
-        <div className="flex flex-col min-h-0 overflow-hidden">
-          <div className="px-5 py-3.5 border-b border-border flex items-center gap-2.5">
+        <div
+          className={cn(
+            'flex-col min-h-0 overflow-hidden',
+            mobileView === 'chat' ? 'flex' : 'hidden md:flex'
+          )}
+        >
+          <div className="px-4 md:px-5 py-3 md:py-3.5 border-b border-border flex items-center gap-2.5">
             {activeConv ? (
               <>
+                <button
+                  type="button"
+                  onClick={() => setMobileView('list')}
+                  className="md:hidden -ml-1 w-9 h-9 rounded-md flex items-center justify-center text-[#52525b] hover:bg-surface-muted"
+                  aria-label="Back to chats"
+                >
+                  <ArrowLeft size={18} />
+                </button>
                 {(() => {
                   const info = getDisplayInfo(activeConv);
                   return (
@@ -433,14 +477,14 @@ export function ChatLayout() {
                         initials={getInitials(info.name)}
                         color={colorForId(info.avatarColorId)}
                       />
-                      <div>
-                        <div className="font-medium text-sm">{info.name}</div>
-                        <div className="text-[11.5px] text-[#71717a]">{info.subtitle}</div>
+                      <div className="min-w-0 flex-1">
+                        <div className="font-medium text-sm truncate">{info.name}</div>
+                        <div className="text-[11.5px] text-[#71717a] truncate">{info.subtitle}</div>
                       </div>
                     </>
                   );
                 })()}
-                <div className="ml-auto flex gap-1.5">
+                <div className="ml-auto flex gap-1 md:gap-1.5 shrink-0">
                   <button
                     onClick={() => handleStartCall('audio')}
                     disabled={callStatus !== 'idle'}
@@ -477,7 +521,7 @@ export function ChatLayout() {
             )}
           </div>
 
-          <div ref={scrollRef} className="flex-1 min-h-0 overflow-y-auto p-5 flex flex-col gap-3">
+          <div ref={scrollRef} className="flex-1 min-h-0 overflow-y-auto p-3 md:p-5 flex flex-col gap-3">
             {!activeId ? (
               <div className="text-center py-12 text-sm text-[#71717a]">
                 Choose a chat to start messaging, or click <strong>New Chat</strong> to start one.
@@ -495,7 +539,7 @@ export function ChatLayout() {
                   <div
                     key={m.id}
                     className={cn(
-                      'flex gap-2 max-w-[70%]',
+                      'flex gap-2 max-w-[85%] md:max-w-[70%]',
                       isOutgoing ? 'self-end flex-row-reverse' : ''
                     )}
                   >
@@ -542,7 +586,7 @@ export function ChatLayout() {
           </div>
 
           {activeId && (
-            <div className="px-5 py-3 border-t border-border">
+            <div className="px-3 md:px-5 py-2.5 md:py-3 border-t border-border">
               {attachment && (
                 <div className="mb-2">
                   <AttachmentChip
@@ -580,7 +624,7 @@ export function ChatLayout() {
                   onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && handleSend()}
                   placeholder={uploading ? 'Uploading...' : 'Type a message...'}
                   disabled={sending || uploading}
-                  className="flex-1 px-3 py-2 border border-border rounded-md outline-none focus:border-primary"
+                  className="flex-1 min-w-0 px-3 py-2 border border-border rounded-md outline-none focus:border-primary text-[14px]"
                 />
                 <Button
                   variant="primary"
@@ -588,7 +632,7 @@ export function ChatLayout() {
                   disabled={sending || uploading || (!input.trim() && !attachment)}
                 >
                   <Send size={14} />
-                  {sending ? 'Sending...' : 'Send'}
+                  <span className="hidden sm:inline">{sending ? 'Sending...' : 'Send'}</span>
                 </Button>
               </div>
             </div>

@@ -48,25 +48,25 @@ export default function EmployeeDashboardPage() {
 
       {isTeamLeader && (
         <>
-          <div className="mb-2 text-[13px] font-medium text-[#71717a] uppercase tracking-wider">
+          <div className="mb-2 text-[11.5px] sm:text-[13px] font-medium text-[#71717a] uppercase tracking-wider">
             Team Overview
           </div>
           <TLDashboardStats />
         </>
       )}
 
-      <div className="mb-2 text-[13px] font-medium text-[#71717a] uppercase tracking-wider">
+      <div className="mb-2 text-[11.5px] sm:text-[13px] font-medium text-[#71717a] uppercase tracking-wider">
         My Work
       </div>
       <EmployeeDashboardStats />
 
-      <div className="grid grid-cols-[1fr_1fr] gap-5">
+      <div className="grid grid-cols-1 md:grid-cols-[1fr_1fr] gap-4 sm:gap-5">
         {isTeamLeader ? <TLPendingApprovals /> : <UpcomingDeadlines />}
         <WeeklyProgress />
       </div>
 
       {isTeamLeader && (
-        <div className="mt-5">
+        <div className="mt-4 sm:mt-5">
           <UpcomingDeadlines />
         </div>
       )}

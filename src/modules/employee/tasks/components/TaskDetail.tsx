@@ -174,24 +174,28 @@ export function TaskDetail({ taskId }: TaskDetailProps) {
     <div>
       <button
         onClick={() => router.push('/my-tasks')}
-        className="flex items-center gap-1.5 text-[13px] text-[#71717a] hover:text-[#18181b] mb-5 transition-colors"
+        className="flex items-center gap-1.5 text-[13px] text-[#71717a] hover:text-[#18181b] mb-4 sm:mb-5 transition-colors"
       >
         <ArrowLeft size={14} />
         Back to My Tasks
       </button>
 
-      <div className="grid grid-cols-[1fr_300px] gap-6">
-        <div>
-          <div className="flex items-start justify-between gap-4 mb-4">
-            <h1 className="text-[22px] font-semibold tracking-tight leading-tight">{task.title}</h1>
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1fr_300px] lg:gap-6">
+        <div className="min-w-0 lg:col-start-1 lg:row-start-1">
+          <div className="flex items-start justify-between gap-3 mb-3 sm:mb-4">
+            <h1 className="text-[18px] sm:text-[20px] lg:text-[22px] font-semibold tracking-tight leading-tight break-words min-w-0">
+              {task.title}
+            </h1>
             <Badge variant={status.variant}>{status.label}</Badge>
           </div>
 
           {task.description && (
-            <p className="text-[14px] text-[#71717a] leading-relaxed mb-6">{task.description}</p>
+            <p className="text-[13.5px] sm:text-[14px] text-[#71717a] leading-relaxed mb-4 sm:mb-6 break-words">
+              {task.description}
+            </p>
           )}
 
-          <div className="flex gap-2 mb-6">
+          <div className="flex flex-wrap gap-2 mb-2 sm:mb-6">
             {task.status === 'assigned' && (
               <Button
                 variant="primary"
@@ -213,109 +217,9 @@ export function TaskDetail({ taskId }: TaskDetailProps) {
               </Button>
             )}
           </div>
-
-          <div>
-            <h2 className="text-sm font-semibold mb-3">Comments</h2>
-            <div className="space-y-3 mb-4">
-              {!comments || comments.length === 0 ? (
-                <div className="text-xs text-[#71717a] py-2">
-                  No comments yet. Start the conversation.
-                </div>
-              ) : (
-                comments.map((c) => {
-                  const user = (c as unknown as { user?: { id: number; name: string } }).user;
-                  const name = user?.name || 'Unknown';
-                  const attachmentUrl = (c as unknown as { attachmentUrl?: string }).attachmentUrl;
-                  return (
-                    <div key={c.id} className="flex gap-3">
-                      <Avatar initials={getInitials(name)} color={colorForId(user?.id || 0)} />
-                      <div className="flex-1 bg-surface-muted rounded-lg px-3 py-2.5">
-                        <div className="flex items-baseline justify-between mb-1">
-                          <span className="text-[13px] font-medium">{name}</span>
-                          <span className="text-[11px] text-[#a1a1aa]">
-                            {formatRelativeTime(c.createdAt)}
-                          </span>
-                        </div>
-                        {c.message && (
-                          <div className="text-[13.5px] leading-relaxed mb-2">{c.message}</div>
-                        )}
-                        {attachmentUrl && (
-                          <div className="mt-1">
-                            <AttachmentChip fileUrl={attachmentUrl} />
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })
-              )}
-            </div>
-
-            <div className="flex gap-2 items-start">
-              <Avatar
-                initials={getInitials(currentUser?.name || 'U')}
-                color={colorForId(currentUser?.id || 0)}
-              />
-              <div className="flex-1">
-                <textarea
-                  value={newComment}
-                  onChange={(e) => setNewComment(e.target.value)}
-                  placeholder="Add a comment..."
-                  rows={3}
-                  className="w-full px-3 py-2 border border-border rounded-md bg-white focus:border-primary focus:ring-4 focus:ring-primary-soft focus:outline-none resize-none text-[13.5px]"
-                />
-
-                {/* Attachment preview */}
-                {attachment && (
-                  <div className="mt-2">
-                    <AttachmentChip
-                      fileUrl={attachment.fileUrl}
-                      fileName={attachment.fileName}
-                      fileType={attachment.fileType}
-                      fileSize={attachment.fileSize}
-                      onRemove={() => setAttachment(null)}
-                    />
-                  </div>
-                )}
-
-                {uploadError && <div className="mt-2 text-xs text-danger">{uploadError}</div>}
-
-                <div className="flex justify-between items-center mt-2">
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    onChange={handleFileSelect}
-                    className="hidden"
-                    accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.zip,.txt,.csv"
-                  />
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    size="sm"
-                    onClick={() => fileInputRef.current?.click()}
-                    disabled={uploading || !!attachment}
-                  >
-                    <Paperclip size={12} />
-                    {uploading ? 'Uploading...' : 'Attach File'}
-                  </Button>
-                  <Button
-                    variant="primary"
-                    size="sm"
-                    onClick={handleSendComment}
-                    disabled={
-                      commentMutation.isPending || (!newComment.trim() && !attachment)
-                    }
-                  >
-                    <Send size={12} />
-                    {commentMutation.isPending ? 'Sending...' : 'Send'}
-                  </Button>
-                </div>
-              </div>
-            </div>
-          </div>
         </div>
 
-        <div className="space-y-4">
+        <div className="space-y-4 lg:col-start-2 lg:row-start-1 lg:row-span-2">
           <Card>
             <CardBody className="py-4">
               <div className="space-y-3 text-[13px]">
@@ -336,7 +240,7 @@ export function TaskDetail({ taskId }: TaskDetailProps) {
                   <div className="text-[11.5px] text-[#71717a] uppercase tracking-wider font-medium mb-1">
                     Department
                   </div>
-                  <div className="font-medium">{task.departmentName}</div>
+                  <div className="font-medium break-words">{task.departmentName}</div>
                 </div>
                 <div>
                   <div className="text-[11.5px] text-[#71717a] uppercase tracking-wider font-medium mb-1 flex items-center gap-1">
@@ -360,19 +264,121 @@ export function TaskDetail({ taskId }: TaskDetailProps) {
                       <UserIcon size={11} />
                       Assigned By
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 min-w-0">
                       <Avatar
                         initials={getInitials(task.createdByName)}
                         color={colorForId(task.createdBy)}
                         size="sm"
                       />
-                      <span className="text-[13px] font-medium">{task.createdByName}</span>
+                      <span className="text-[13px] font-medium truncate">{task.createdByName}</span>
                     </div>
                   </div>
                 )}
               </div>
             </CardBody>
           </Card>
+        </div>
+
+        <div className="min-w-0 lg:col-start-1 lg:row-start-2">
+          <h2 className="text-sm font-semibold mb-3">Comments</h2>
+          <div className="space-y-3 mb-4">
+            {!comments || comments.length === 0 ? (
+              <div className="text-xs text-[#71717a] py-2">
+                No comments yet. Start the conversation.
+              </div>
+            ) : (
+              comments.map((c) => {
+                const user = (c as unknown as { user?: { id: number; name: string } }).user;
+                const name = user?.name || 'Unknown';
+                const attachmentUrl = (c as unknown as { attachmentUrl?: string }).attachmentUrl;
+                return (
+                  <div key={c.id} className="flex gap-2 sm:gap-3">
+                    <Avatar initials={getInitials(name)} color={colorForId(user?.id || 0)} />
+                    <div className="flex-1 min-w-0 bg-surface-muted rounded-lg px-3 py-2.5">
+                      <div className="flex flex-wrap items-baseline justify-between gap-x-2 gap-y-0.5 mb-1">
+                        <span className="text-[13px] font-medium break-words">{name}</span>
+                        <span className="text-[11px] text-[#a1a1aa] whitespace-nowrap">
+                          {formatRelativeTime(c.createdAt)}
+                        </span>
+                      </div>
+                      {c.message && (
+                        <div className="text-[13.5px] leading-relaxed mb-2 break-words">
+                          {c.message}
+                        </div>
+                      )}
+                      {attachmentUrl && (
+                        <div className="mt-1">
+                          <AttachmentChip fileUrl={attachmentUrl} />
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
+
+          <div className="flex gap-2 sm:gap-3 items-start">
+            <Avatar
+              initials={getInitials(currentUser?.name || 'U')}
+              color={colorForId(currentUser?.id || 0)}
+            />
+            <div className="flex-1 min-w-0">
+              <textarea
+                value={newComment}
+                onChange={(e) => setNewComment(e.target.value)}
+                placeholder="Add a comment..."
+                rows={3}
+                className="w-full px-3 py-2 border border-border rounded-md bg-white focus:border-primary focus:ring-4 focus:ring-primary-soft focus:outline-none resize-none text-[13.5px]"
+              />
+
+              {/* Attachment preview */}
+              {attachment && (
+                <div className="mt-2">
+                  <AttachmentChip
+                    fileUrl={attachment.fileUrl}
+                    fileName={attachment.fileName}
+                    fileType={attachment.fileType}
+                    fileSize={attachment.fileSize}
+                    onRemove={() => setAttachment(null)}
+                  />
+                </div>
+              )}
+
+              {uploadError && <div className="mt-2 text-xs text-danger">{uploadError}</div>}
+
+              <div className="flex flex-wrap justify-between items-center gap-2 mt-2">
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  onChange={handleFileSelect}
+                  className="hidden"
+                  accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.zip,.txt,.csv"
+                />
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={uploading || !!attachment}
+                >
+                  <Paperclip size={12} />
+                  {uploading ? 'Uploading...' : 'Attach File'}
+                </Button>
+                <Button
+                  variant="primary"
+                  size="sm"
+                  onClick={handleSendComment}
+                  disabled={
+                    commentMutation.isPending || (!newComment.trim() && !attachment)
+                  }
+                >
+                  <Send size={12} />
+                  {commentMutation.isPending ? 'Sending...' : 'Send'}
+                </Button>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>

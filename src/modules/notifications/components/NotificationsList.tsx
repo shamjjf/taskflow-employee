@@ -1,5 +1,6 @@
 'use client';
 
+import { useMemo, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Card } from '@/components/ui';
 import { FilterBar, FilterSelect } from '@/components/shared';
@@ -7,6 +8,17 @@ import { cn, formatRelativeTime } from '@/lib/utils';
 import { Check, ClipboardList, AlertTriangle, MessageSquare, FileText } from 'lucide-react';
 import { notificationsService } from '../services/notificationsService';
 import type { LucideIcon } from 'lucide-react';
+import type { Notification } from '@/types';
+
+type NotificationCategory = 'task' | 'report' | 'message' | 'system';
+
+function categoryOf(n: Notification): NotificationCategory {
+  if (n.referenceType) return n.referenceType;
+  if (n.type.startsWith('task_') || n.type === 'deadline_near') return 'task';
+  if (n.type.startsWith('report_')) return 'report';
+  if (n.type === 'message_new' || n.type === 'comment_new') return 'message';
+  return 'system';
+}
 
 const iconMap: Record<string, { Icon: LucideIcon; color: string; bg: string }> = {
   task_assigned: { Icon: ClipboardList, color: '#3b82f6', bg: '#eff6ff' },
@@ -24,6 +36,7 @@ const iconMap: Record<string, { Icon: LucideIcon; color: string; bg: string }> =
 
 export function NotificationsList() {
   const queryClient = useQueryClient();
+  const [filter, setFilter] = useState('');
   const { data, isLoading } = useQuery({
     queryKey: ['notifications'],
     queryFn: () => notificationsService.list(),
@@ -35,29 +48,45 @@ export function NotificationsList() {
     queryClient.invalidateQueries({ queryKey: ['notifications'] });
   };
 
-  const notifications = data || [];
+  const notifications = useMemo(() => data || [], [data]);
+
+  const filtered = useMemo(() => {
+    if (!filter) return notifications;
+    if (filter === 'unread') return notifications.filter((n) => !n.isRead);
+    return notifications.filter((n) => categoryOf(n) === filter);
+  }, [notifications, filter]);
 
   return (
     <>
       <FilterBar>
         <FilterSelect
+          value={filter}
+          onChange={setFilter}
           options={[
             { value: '', label: 'All' },
             { value: 'unread', label: 'Unread' },
-            { value: 'tasks', label: 'Tasks' },
-            { value: 'reports', label: 'Reports' },
-            { value: 'messages', label: 'Messages' },
+            { value: 'task', label: 'Tasks' },
+            { value: 'report', label: 'Reports' },
+            { value: 'message', label: 'Messages' },
+            { value: 'system', label: 'System' },
           ]}
         />
+        <span className="text-[12px] text-[#71717a]">
+          {filtered.length} of {notifications.length}
+        </span>
       </FilterBar>
       <Card>
         {isLoading ? (
           <div className="text-center py-8 text-sm text-[#71717a]">Loading...</div>
-        ) : notifications.length === 0 ? (
-          <div className="text-center py-12 text-sm text-[#71717a]">No notifications yet</div>
+        ) : filtered.length === 0 ? (
+          <div className="text-center py-12 text-sm text-[#71717a]">
+            {notifications.length === 0
+              ? 'No notifications yet'
+              : 'No notifications match this filter'}
+          </div>
         ) : (
           <div>
-            {notifications.map((n) => {
+            {filtered.map((n) => {
               const meta = iconMap[n.type] || iconMap.system;
               const Icon = meta.Icon;
               return (

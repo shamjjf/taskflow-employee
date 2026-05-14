@@ -2,9 +2,9 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Card, CardBody, Avatar, Badge, Button } from '@/components/ui';
-import { MessageSquare, Mail, BarChart3 } from 'lucide-react';
+import { MessageSquare, Mail, BarChart3, TrendingUp } from 'lucide-react';
 import { api } from '@/lib/api';
 import { useRole } from '@/hooks/useRole';
 import { useAuthStore } from '@/store/authStore';
@@ -30,6 +30,7 @@ interface DeptUser {
 
 export function MyTeamList() {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const { isTeamLeader } = useRole();
   const currentUser = useAuthStore((s) => s.user);
   const [startingChatWithId, setStartingChatWithId] = useState<number | null>(null);
@@ -50,8 +51,9 @@ export function MyTeamList() {
     if (member.id === currentUser?.id) return;
     setStartingChatWithId(member.id);
     try {
-      await chatService.findOrCreateDirect(member.id, member.name);
-      router.push('/chat');
+      const conv = await chatService.findOrCreateDirect(member.id, member.name);
+      queryClient.invalidateQueries({ queryKey: ['conversations'] });
+      router.push(`/chat?conv=${conv.id}`);
     } catch (err) {
       const axiosErr = err as { response?: { data?: { error?: string } } };
       alert(axiosErr?.response?.data?.error || 'Could not start chat. Please try again.');
@@ -76,26 +78,30 @@ export function MyTeamList() {
             Team Leader
           </h2>
           <Card>
-            <CardBody className="py-4">
-              <div className="flex items-center gap-3">
+            <CardBody className="py-3 sm:py-4 px-3 sm:px-4">
+              <div className="flex items-center gap-2.5 sm:gap-3">
                 <Avatar
                   initials={getInitials(teamLeader.name)}
                   color={colorForId(teamLeader.id)}
                   size="lg"
                 />
-                <div className="flex-1">
-                  <div className="flex items-center gap-2 mb-0.5">
-                    <span className="text-[15px] font-semibold">{teamLeader.name}</span>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-1.5 sm:gap-2 mb-0.5 flex-wrap">
+                    <span className="text-[14px] sm:text-[15px] font-semibold truncate">
+                      {teamLeader.name}
+                    </span>
                     <Badge variant="purple">{USER_ROLE_LABELS[teamLeader.role]}</Badge>
                   </div>
-                  <div className="text-[13px] text-[#71717a]">{teamLeader.email}</div>
+                  <div className="text-[12px] sm:text-[13px] text-[#71717a] truncate">
+                    {teamLeader.email}
+                  </div>
                   {teamLeader.lastLoginAt && (
-                    <div className="text-[11.5px] text-[#71717a] mt-0.5">
+                    <div className="text-[11px] sm:text-[11.5px] text-[#71717a] mt-0.5">
                       Active {formatRelativeTime(teamLeader.lastLoginAt)}
                     </div>
                   )}
                 </div>
-                <div className="flex gap-2">
+                <div className="flex gap-2 shrink-0">
                   <Button
                     variant="primary"
                     size="sm"
@@ -103,7 +109,9 @@ export function MyTeamList() {
                     disabled={startingChatWithId === teamLeader.id}
                   >
                     <MessageSquare size={12} />
-                    {startingChatWithId === teamLeader.id ? 'Opening...' : 'Message'}
+                    <span className="hidden sm:inline">
+                      {startingChatWithId === teamLeader.id ? 'Opening...' : 'Message'}
+                    </span>
                   </Button>
                 </div>
               </div>
@@ -113,65 +121,81 @@ export function MyTeamList() {
       )}
 
       <div>
-        <div className="flex items-center justify-between mb-3">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-3">
           <h2 className="text-[13px] text-[#71717a] uppercase tracking-wider font-medium">
             {isTeamLeader
               ? `My Team Members (${teamMembers.length})`
               : `Team Members (${teamMembers.length})`}
           </h2>
           {isTeamLeader && (
-            <Button variant="secondary" size="sm">
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => router.push('/team/performance')}
+              className="self-start sm:self-auto"
+            >
               <BarChart3 size={12} />
               View Performance
             </Button>
           )}
         </div>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="flex flex-col gap-2.5">
           {teamMembers.map((member) => {
             const isMe = member.id === currentUser?.id;
             return (
               <Card key={member.id}>
-                <CardBody className="py-4">
-                  <div className="flex items-center gap-3">
+                <CardBody className="py-3 sm:py-4 px-3 sm:px-4">
+                  <div className="flex items-center gap-2.5 sm:gap-3">
                     <Avatar
                       initials={getInitials(member.name)}
                       color={colorForId(member.id)}
                       size="lg"
                     />
                     <div className="flex-1 min-w-0">
-                      <div className="text-[14px] font-semibold truncate flex items-center gap-2">
-                        {member.name}
+                      <div className="text-[13.5px] sm:text-[14px] font-semibold truncate flex items-center gap-2">
+                        <span className="truncate">{member.name}</span>
                         {isMe && (
-                          <span className="text-[10.5px] text-primary bg-primary-soft px-1.5 py-0.5 rounded">
+                          <span className="text-[10.5px] text-primary bg-primary-soft px-1.5 py-0.5 rounded shrink-0">
                             You
                           </span>
                         )}
                       </div>
-                      <div className="text-[12px] text-[#71717a] truncate">{member.email}</div>
-                      <div className="flex items-center gap-2 mt-1">
+                      <div className="text-[11.5px] sm:text-[12px] text-[#71717a] truncate">
+                        {member.email}
+                      </div>
+                      <div className="flex items-center gap-1.5 sm:gap-2 mt-1 flex-wrap">
                         <Badge variant={member.status === 'active' ? 'success' : 'neutral'}>
                           {member.status === 'active' ? 'Active' : 'Inactive'}
                         </Badge>
                         {member.lastLoginAt && (
-                          <span className="text-[11px] text-[#71717a]">
+                          <span className="text-[10.5px] sm:text-[11px] text-[#71717a]">
                             {formatRelativeTime(member.lastLoginAt)}
                           </span>
                         )}
                       </div>
                     </div>
                     {!isMe && (
-                      <div className="flex flex-col gap-1">
+                      <div className="flex gap-1 sm:gap-1.5 shrink-0">
+                        {isTeamLeader && (
+                          <button
+                            onClick={() => router.push(`/team/performance/${member.id}`)}
+                            className="w-8 h-8 sm:w-9 sm:h-9 rounded-md flex items-center justify-center text-[#71717a] bg-surface-muted hover:bg-[#e4e4e7] hover:text-[#18181b] transition-colors"
+                            title="View performance"
+                          >
+                            <TrendingUp size={14} />
+                          </button>
+                        )}
                         <button
                           onClick={() => startChat(member)}
                           disabled={startingChatWithId === member.id}
-                          className="w-8 h-8 rounded-md flex items-center justify-center text-primary bg-primary-soft hover:bg-primary hover:text-white transition-colors disabled:opacity-50"
+                          className="w-8 h-8 sm:w-9 sm:h-9 rounded-md flex items-center justify-center text-primary bg-primary-soft hover:bg-primary hover:text-white transition-colors disabled:opacity-50"
                           title="Start chat"
                         >
                           <MessageSquare size={14} />
                         </button>
                         <a
                           href={`mailto:${member.email}`}
-                          className="w-8 h-8 rounded-md flex items-center justify-center text-[#71717a] hover:bg-surface-muted hover:text-[#18181b] transition-colors"
+                          className="w-8 h-8 sm:w-9 sm:h-9 rounded-md flex items-center justify-center text-[#71717a] bg-surface-muted hover:bg-[#e4e4e7] hover:text-[#18181b] transition-colors"
                           title="Email"
                         >
                           <Mail size={14} />

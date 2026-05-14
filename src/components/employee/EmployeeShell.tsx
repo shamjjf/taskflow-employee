@@ -53,11 +53,11 @@ export function EmployeeShell({ children }: EmployeeShellProps) {
       <div
         className={cn(
           'flex-1 flex flex-col min-w-0 transition-[margin] duration-200',
-          collapsed ? 'ml-16' : 'ml-48 md:ml-52 lg:ml-60'
+          collapsed ? 'ml-16' : 'ml-16 md:ml-52 lg:ml-60'
         )}
       >
         <EmployeeTopbar />
-        <main className="flex-1 px-8 py-7 overflow-y-auto">{children}</main>
+        <main className="flex-1 px-3 py-4 sm:px-8 sm:py-7 overflow-y-auto">{children}</main>
       </div>
       <AssignTaskModal />
 
