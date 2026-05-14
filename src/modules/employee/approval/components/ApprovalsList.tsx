@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { cn } from '@/lib/utils';
@@ -9,6 +9,7 @@ import { Check, Eye, X, MessageSquareText } from 'lucide-react';
 import { approvalService } from '../services/approvalService';
 import { employeeReportsService } from '../../reports/services/employeeReportsService';
 import { normalizeReport } from '@/lib/normalizers';
+import { useSocket, useSocketEvent } from '@/hooks/useSocket';
 import type { Report } from '@/types';
 
 const DESCRIPTION_PREVIEW_LIMIT = 250;
@@ -163,7 +164,19 @@ function ApprovalCard({ report }: ApprovalCardProps) {
 
 export function ApprovalsList() {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState<TabKey>('pending');
+
+  useSocket();
+
+  const refreshReports = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: ['pending-approvals'] });
+    queryClient.invalidateQueries({ queryKey: ['department-reports'] });
+  }, [queryClient]);
+
+  useSocketEvent('report:submitted', refreshReports);
+  useSocketEvent('report:approved', refreshReports);
+  useSocketEvent('report:rejected', refreshReports);
 
   const { data: pendingRaw, isLoading: loadingPending } = useQuery({
     queryKey: ['pending-approvals'],

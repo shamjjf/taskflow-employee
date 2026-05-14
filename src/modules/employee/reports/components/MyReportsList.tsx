@@ -1,9 +1,11 @@
 'use client';
 
+import { useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Card, Badge, Button } from '@/components/ui';
 import { Calendar, CheckCircle2, Clock, Eye, RotateCcw, XCircle } from 'lucide-react';
+import { useSocket, useSocketEvent } from '@/hooks/useSocket';
 
 const DESCRIPTION_PREVIEW_LIMIT = 250;
 function truncateDescription(text: string) {
@@ -26,6 +28,18 @@ function statusInfo(r: Report) {
 
 export function MyReportsList() {
   const router = useRouter();
+  const queryClient = useQueryClient();
+
+  useSocket();
+
+  const refreshReports = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: ['my-reports'] });
+  }, [queryClient]);
+
+  useSocketEvent('report:submitted', refreshReports);
+  useSocketEvent('report:approved', refreshReports);
+  useSocketEvent('report:rejected', refreshReports);
+
   const { data, isLoading } = useQuery({
     queryKey: ['my-reports'],
     queryFn: () => employeeReportsService.getMyReports(),

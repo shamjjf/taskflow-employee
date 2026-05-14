@@ -1,7 +1,8 @@
 'use client';
 
+import { useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Avatar, Badge, Button, Card, CardBody } from '@/components/ui';
 import {
   ArrowLeft,
@@ -14,6 +15,7 @@ import {
 import { employeeReportsService } from '../services/employeeReportsService';
 import { normalizeReport } from '@/lib/normalizers';
 import { formatDateTime } from '@/lib/utils';
+import { useSocket, useSocketEvent } from '@/hooks/useSocket';
 import type { Report } from '@/types';
 
 interface ReportDetailProps {
@@ -35,6 +37,23 @@ const reportTypeLabel = (type: Report['reportType']) =>
 
 export function ReportDetail({ reportId }: ReportDetailProps) {
   const router = useRouter();
+  const queryClient = useQueryClient();
+
+  useSocket();
+
+  const refreshReport = useCallback(
+    (data: unknown) => {
+      const incomingId = (data as { id?: number })?.id;
+      if (incomingId == null || incomingId === reportId) {
+        queryClient.invalidateQueries({ queryKey: ['report', reportId] });
+      }
+    },
+    [queryClient, reportId]
+  );
+
+  useSocketEvent('report:submitted', refreshReport);
+  useSocketEvent('report:approved', refreshReport);
+  useSocketEvent('report:rejected', refreshReport);
 
   const { data: raw, isLoading, isError } = useQuery({
     queryKey: ['report', reportId],
