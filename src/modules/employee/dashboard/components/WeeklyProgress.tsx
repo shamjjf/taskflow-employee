@@ -37,10 +37,10 @@ export function WeeklyProgress() {
         </div>
 
         {/* Desktop: vertical bars laid out horizontally */}
-        <div className="hidden sm:flex items-end gap-3 h-[160px] py-2">
+        <div className="hidden sm:flex gap-3 h-[180px] py-2">
           {weekData.map((d) => (
-            <div key={d.day} className="flex-1 flex flex-col items-center gap-2">
-              <div className="w-full flex items-end h-36">
+            <div key={d.day} className="flex-1 flex flex-col items-center gap-1.5 h-full">
+              <div className="w-full flex-1 min-h-0 flex items-end">
                 <div
                   className="w-full bg-primary rounded-t-[3px] min-h-[4px] transition-all duration-500"
                   style={{ height: `${max > 0 ? (d.completed / max) * 100 : 0}%` }}
