@@ -23,6 +23,7 @@ interface IncomingCallPayload {
   channelName: string;
   callType: CallType;
   isGroup?: boolean;
+  groupName?: string;
   caller: { id: number; name?: string; email: string; profileImage?: string };
   startedAt: string;
 }
@@ -157,6 +158,7 @@ export function useAgoraCall() {
       callType: payload.callType,
       conversationId: payload.conversationId,
       isGroup: payload.isGroup ?? false,
+      groupName: payload.groupName,
       participantIds: [payload.caller.id], // For now, will be enriched
       participants: [
         {
@@ -202,13 +204,19 @@ export function useAgoraCall() {
   }, [cleanupCall]));
 
   // 🛑 Someone ended the call. For 1-on-1 calls, both sides drop. For group
-  // calls we ignore this — the FE only sends a leave broadcast for 1-on-1
-  // calls, and group leavers fall off via Agora's user-left event instead.
+  // calls, connected participants ignore this (Agora's user-left event
+  // handles their UI), but receivers still in the ringing state need to
+  // stop ringing — the caller cancelled before they picked up.
   useSocketEvent<CallEndedPayload>('call:ended', useCallback((payload) => {
     const state = useCallStore.getState();
     if (state.session?.channelName !== payload.channelName) return;
 
     if (state.session?.isGroup) {
+      if (state.status === 'incoming') {
+        console.log('[Call] Group caller cancelled before pickup');
+        cleanupCall();
+        return;
+      }
       console.log('[Call] User', payload.endedBy, 'left the group call');
       return;
     }
@@ -232,6 +240,7 @@ export function useAgoraCall() {
       callType: CallType;
       participants: { id: number; name: string; email?: string }[];
       isGroup?: boolean;
+      groupName?: string;
     }) => {
       if (!currentUser) throw new Error('Not authenticated');
 
@@ -248,6 +257,7 @@ export function useAgoraCall() {
         channelName,
         callType: opts.callType,
         isGroup: opts.isGroup ?? false,
+        groupName: opts.groupName,
         participantIds: targetIds,
         participants: opts.participants,
       });
@@ -263,6 +273,7 @@ export function useAgoraCall() {
           callType: opts.callType,
           participantIds: targetIds,
           isGroup: opts.isGroup ?? false,
+          groupName: opts.groupName,
         });
       } catch (err) {
         console.error('[Call] startCall failed:', err);
@@ -332,15 +343,29 @@ export function useAgoraCall() {
       return;
     }
 
+    // The caller is the only one with no `caller` field on their session
+    // (it gets populated only when receiveIncoming() is called).
+    const isCaller = !session.caller;
+
     try {
-      // For group calls, just leave the channel locally — don't kick others.
-      // Other participants will see the user-left event from Agora itself.
       if (!session.isGroup) {
+        // 1-on-1: tell the other party to drop.
         await agoraApi.end({
           channelName: session.channelName,
           participantIds: session.participantIds,
         });
+      } else if (isCaller) {
+        // Group call hung up by the caller: notify the backend so it can
+        // log the call event in chat and stop receivers who are still
+        // ringing. Connected receivers ignore the socket broadcast and
+        // continue talking — Agora's user-left event handles caller exit.
+        await agoraApi.end({
+          channelName: session.channelName,
+          participantIds: session.participantIds,
+          isGroup: true,
+        });
       }
+      // Group receiver leaving: just drop locally, no API call needed.
     } catch (err) {
       console.error('[Call] endCall error:', err);
     }

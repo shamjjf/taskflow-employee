@@ -41,6 +41,7 @@ export const agoraApi = {
     callType: CallType;
     participantIds: number[];
     isGroup?: boolean;
+    groupName?: string;
   }): Promise<void> {
     await api.post<ApiResponse<{ ringing: number }>>('/agora/ring', payload);
   },

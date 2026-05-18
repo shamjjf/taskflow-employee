@@ -161,6 +161,20 @@ export interface Conversation {
   participants: number[];
 }
 
+export type CallEventOutcome = 'answered' | 'missed' | 'declined' | 'cancelled';
+
+export interface CallEventData {
+  callType: 'audio' | 'video';
+  outcome: CallEventOutcome;
+  callerId: number;
+  channelName: string;
+  startedAt: string;
+  endedAt: string;
+  durationSec: number;
+  isGroup: boolean;
+  participantIds: number[];
+}
+
 export interface Message {
   id: number;
   conversationId: number;
@@ -170,6 +184,8 @@ export interface Message {
   senderColor: string;
   message: string;
   attachmentUrl?: string;
+  messageType?: 'text' | 'call_event';
+  callEventData?: CallEventData | null;
   isDeleted: boolean;
   createdAt: string;
   timeLabel: string;

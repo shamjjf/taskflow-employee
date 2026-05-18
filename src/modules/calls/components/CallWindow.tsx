@@ -153,6 +153,7 @@ export function CallWindow(props: CallWindowProps) {
 
   const isVideo = session.callType === 'video';
   const isConnected = status === 'connected';
+  const isGroup = !!session.isGroup;
   const remoteUidList = Object.keys(remoteUsers).map(Number);
   const remoteCount = remoteUidList.length;
 
@@ -161,6 +162,16 @@ export function CallWindow(props: CallWindowProps) {
   // Resolve participant info for remote uids
   const getParticipant = (uid: number) =>
     session.participants.find((p) => p.id === uid);
+
+  // For group calls, the headline is the group name; otherwise it's the
+  // other party (caller for receiver, callee for caller).
+  const headlineName = isGroup
+    ? session.groupName || 'Group chat'
+    : session.participants[0]?.name || 'Calling...';
+  const headlineColorId = isGroup
+    ? session.conversationId + 1000
+    : session.participants[0]?.id || 0;
+  const subline = isGroup && session.caller ? `${session.caller.name} started the call` : undefined;
 
   // Status text shown at top
   const statusText = (() => {
@@ -184,13 +195,14 @@ export function CallWindow(props: CallWindowProps) {
     <div className="fixed inset-0 z-[55] bg-[#0a0a0a] flex flex-col animate-fade-in">
       {/* Top bar — call info */}
       <div className="flex-shrink-0 px-6 py-4 flex items-center justify-between border-b border-white/5 bg-gradient-to-b from-black/40 to-transparent">
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="flex items-center gap-1.5 shrink-0">
             <span className={cn('w-2 h-2 rounded-full', isConnected ? 'bg-[#10b981]' : 'bg-[#f59e0b]')} />
             <span className="text-[11px] font-medium tracking-[0.14em] uppercase text-white/60">
-              {isVideo ? 'Video Call' : 'Voice Call'}
+              {isGroup ? 'Group ' : ''}{isVideo ? 'Video Call' : 'Voice Call'}
             </span>
           </div>
+          <div className="text-white text-sm font-medium truncate">{headlineName}</div>
         </div>
 
         <div className="text-white text-sm font-medium tabular-nums">{statusText}</div>
@@ -211,16 +223,17 @@ export function CallWindow(props: CallWindowProps) {
                 <div className="relative">
                   <span className="absolute inset-0 rounded-full bg-[#5b5bd6]/30 animate-ping" />
                   <Avatar
-                    initials={getInitials(session.participants[0]?.name || '?')}
-                    color={colorForId(session.participants[0]?.id || 0)}
+                    initials={getInitials(headlineName)}
+                    color={colorForId(headlineColorId)}
                     size="lg"
                     className="!w-32 !h-32 !text-4xl relative"
                   />
                 </div>
                 <div className="text-center">
-                  <div className="text-white text-2xl font-semibold">
-                    {session.participants[0]?.name || 'Calling...'}
-                  </div>
+                  <div className="text-white text-2xl font-semibold">{headlineName}</div>
+                  {subline && (
+                    <div className="text-white/60 text-sm mt-0.5">{subline}</div>
+                  )}
                   <div className="text-white/50 text-sm mt-1">{statusText}</div>
                 </div>
               </div>
@@ -264,15 +277,16 @@ export function CallWindow(props: CallWindowProps) {
                 <div className="relative mb-4">
                   <span className="absolute inset-0 rounded-full bg-[#5b5bd6]/30 animate-ping" />
                   <Avatar
-                    initials={getInitials(session.participants[0]?.name || '?')}
-                    color={colorForId(session.participants[0]?.id || 0)}
+                    initials={getInitials(headlineName)}
+                    color={colorForId(headlineColorId)}
                     size="lg"
                     className="!w-24 !h-24 !text-3xl relative"
                   />
                 </div>
-                <div className="text-white text-xl font-semibold">
-                  {session.participants[0]?.name || 'Calling...'}
-                </div>
+                <div className="text-white text-xl font-semibold">{headlineName}</div>
+                {subline && (
+                  <div className="text-white/60 text-sm mt-0.5">{subline}</div>
+                )}
                 <div className="text-white/50 text-sm mt-1">{statusText}</div>
               </div>
             )}
