@@ -80,6 +80,8 @@ export function IncomingCallToast({ session, onAccept, onReject }: IncomingCallT
   if (!caller) return null;
 
   const isVideo = session.callType === 'video';
+  const isGroup = !!session.isGroup;
+  const groupName = session.groupName;
 
   return (
     <>
@@ -96,7 +98,7 @@ export function IncomingCallToast({ session, onAccept, onReject }: IncomingCallT
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#10b981] opacity-75" />
                 <span className="relative inline-flex rounded-full h-2 w-2 bg-[#10b981]" />
               </span>
-              Incoming {isVideo ? 'video' : 'voice'} call
+              Incoming {isGroup ? 'group ' : ''}{isVideo ? 'video' : 'voice'} call
             </div>
 
             {/* Avatar with pulsing ring */}
@@ -105,20 +107,24 @@ export function IncomingCallToast({ session, onAccept, onReject }: IncomingCallT
               <span className="absolute inset-0 rounded-full bg-[#5b5bd6]/20 animate-pulse" />
               <div className="relative">
                 <Avatar
-                  initials={getInitials(caller.name)}
-                  color={colorForId(caller.id)}
+                  initials={getInitials(isGroup && groupName ? groupName : caller.name)}
+                  color={colorForId(isGroup ? session.conversationId + 1000 : caller.id)}
                   size="lg"
                   className="!w-20 !h-20 !text-2xl ring-4 ring-white shadow-lg"
                 />
               </div>
             </div>
 
-            {/* Caller name */}
+            {/* Title — group name when group, caller name when 1-on-1 */}
             <h2 className="text-[20px] font-semibold text-[#18181b] tracking-tight">
-              {caller.name}
+              {isGroup ? groupName || 'Group chat' : caller.name}
             </h2>
-            {caller.email && (
-              <p className="text-[12.5px] text-[#71717a] mt-0.5">{caller.email}</p>
+            {isGroup ? (
+              <p className="text-[12.5px] text-[#71717a] mt-0.5">{caller.name} is calling</p>
+            ) : (
+              caller.email && (
+                <p className="text-[12.5px] text-[#71717a] mt-0.5">{caller.email}</p>
+              )
             )}
           </div>
 

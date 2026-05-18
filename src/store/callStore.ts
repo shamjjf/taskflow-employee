@@ -44,6 +44,8 @@ export interface CallSession {
   caller?: CallUser;
   /** True if this is a multi-party (group) call. Changes reject/end semantics. */
   isGroup?: boolean;
+  /** Group / conversation name — shown as the call title for group calls. */
+  groupName?: string;
 }
 
 interface CallState {

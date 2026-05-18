@@ -9,12 +9,13 @@ import { Search, Phone, Video, Paperclip, Send, Plus, Users, UsersRound, ArrowLe
 import { cn, getInitials } from '@/lib/utils';
 import { chatService } from '../services/chatService';
 import { DepartmentGroupChatManager } from './DepartmentGroupChatManager';
+import { CallEventBubble } from './CallEventBubble';
 import { uploadService, type UploadedFile } from '@/lib/uploadService';
 import { useAuthStore } from '@/store/authStore';
 import { api } from '@/lib/api';
 import { socketClient } from '@/lib/socket';
 import { useAgoraCall } from '@/modules/calls/hooks/useAgoraCall';
-import type { ApiResponse, Message } from '@/types';
+import type { ApiResponse, Message, CallEventData } from '@/types';
 
 const colorForId = (id: number) => {
   const palette = ['#5b5bd6', '#3b82f6', '#10b981', '#8b5cf6', '#ec4899', '#f59e0b', '#f97316'];
@@ -357,6 +358,7 @@ export function ChatLayout() {
         callType,
         participants,
         isGroup: isGroupCall,
+        groupName: isGroupCall ? activeConv.name || 'Group chat' : undefined,
       });
     } catch (err) {
       const axiosErr = err as { response?: { data?: { error?: string } }; message?: string };
@@ -535,6 +537,20 @@ export function ChatLayout() {
                 const sender = (m as unknown as { sender?: { id: number; name: string } }).sender;
                 const isOutgoing = sender?.id === currentUser?.id;
                 const attachmentUrl = (m as unknown as { attachmentUrl?: string }).attachmentUrl;
+                const messageType = (m as unknown as { messageType?: 'text' | 'call_event' }).messageType;
+                const callEventData = (m as unknown as { callEventData?: CallEventData | null }).callEventData;
+
+                if (messageType === 'call_event' && callEventData && currentUser) {
+                  return (
+                    <CallEventBubble
+                      key={m.id}
+                      data={callEventData}
+                      viewerId={currentUser.id}
+                      createdAt={m.createdAt}
+                    />
+                  );
+                }
+
                 return (
                   <div
                     key={m.id}
