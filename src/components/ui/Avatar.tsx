@@ -31,6 +31,7 @@ export function Avatar({ initials, color = '#5b5bd6', size = 'md', src, classNam
       style={{ background: showImage ? 'transparent' : color }}
     >
       {showImage ? (
+        // eslint-disable-next-line @next/next/no-img-element
         <img
           src={resolvedSrc}
           alt={initials}
