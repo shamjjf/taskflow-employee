@@ -6,6 +6,7 @@ import { useSocketEvent } from '@/hooks/useSocket';
 import { agoraRTC, type CallType } from '../services/agoraRtc';
 import { agoraApi } from '../services/agoraApi';
 import { useAuthStore } from '@/store/authStore';
+import { devLog } from '@/lib/devLog';
 
 /**
  * Generate a unique channel name for a call.
@@ -61,11 +62,11 @@ export function useAgoraCall() {
   useEffect(() => {
     agoraRTC.setCallbacks({
       onUserJoined: (uid) => {
-        console.log('[Call] User joined:', uid);
+        devLog('[Call] User joined:', uid);
         useCallStore.getState().addRemoteUser(uid);
       },
       onUserLeft: (uid) => {
-        console.log('[Call] User left:', uid);
+        devLog('[Call] User left:', uid);
         useCallStore.getState().removeRemoteUser(uid);
       },
       onUserPublished: (user, mediaType) => {
@@ -139,7 +140,7 @@ export function useAgoraCall() {
 
     // If already in a call, auto-reject (busy signal)
     if (state.status !== 'idle' && state.status !== 'ended') {
-      console.log('[Call] Busy — auto-rejecting incoming call');
+      devLog('[Call] Busy — auto-rejecting incoming call');
       agoraApi
         .reject({
           channelName: payload.channelName,
@@ -181,7 +182,7 @@ export function useAgoraCall() {
     if (state.session?.channelName !== payload.channelName) return;
     if (state.status !== 'outgoing') return;
 
-    console.log('[Call] Accepted by user', payload.acceptedBy);
+    devLog('[Call] Accepted by user', payload.acceptedBy);
     // We're already in the channel waiting; status is 'outgoing'.
     // Once Agora's user-joined fires, we'll know they actually came in.
     // For UI feedback, transition to connected immediately.
@@ -195,11 +196,11 @@ export function useAgoraCall() {
     if (state.session?.channelName !== payload.channelName) return;
 
     if (state.session?.isGroup) {
-      console.log('[Call] User', payload.rejectedBy, 'declined the group call');
+      devLog('[Call] User', payload.rejectedBy, 'declined the group call');
       return;
     }
 
-    console.log('[Call] Rejected by user', payload.rejectedBy);
+    devLog('[Call] Rejected by user', payload.rejectedBy);
     cleanupCall();
   }, [cleanupCall]));
 
@@ -213,15 +214,15 @@ export function useAgoraCall() {
 
     if (state.session?.isGroup) {
       if (state.status === 'incoming') {
-        console.log('[Call] Group caller cancelled before pickup');
+        devLog('[Call] Group caller cancelled before pickup');
         cleanupCall();
         return;
       }
-      console.log('[Call] User', payload.endedBy, 'left the group call');
+      devLog('[Call] User', payload.endedBy, 'left the group call');
       return;
     }
 
-    console.log('[Call] Ended by user', payload.endedBy);
+    devLog('[Call] Ended by user', payload.endedBy);
     cleanupCall();
   }, [cleanupCall]));
 
@@ -399,7 +400,7 @@ export function useAgoraCall() {
       }
     } catch (err) {
       // User cancelled the screen-pick dialog — not an error
-      console.log('[Call] Screen share toggle:', err);
+      devLog('[Call] Screen share toggle:', err);
       useCallStore.getState().setScreenSharing(agoraRTC.isCurrentlyScreenSharing());
     }
   }, []);

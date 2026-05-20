@@ -13,6 +13,7 @@ import type {
   ILocalVideoTrack,
   IAgoraRTCRemoteUser,
 } from 'agora-rtc-sdk-ng';
+import { devLog } from '@/lib/devLog';
 
 const APP_ID = process.env.NEXT_PUBLIC_AGORA_APP_ID || '';
 
@@ -236,7 +237,7 @@ class AgoraRTCService {
     });
 
     this.client.on('connection-state-change', (curState, prevState) => {
-      console.log(`[Agora] State: ${prevState} → ${curState}`);
+      devLog(`[Agora] State: ${prevState} → ${curState}`);
       this.callbacks.onConnectionStateChange?.(curState, prevState);
     });
   }

@@ -1,4 +1,5 @@
 import { io, Socket } from 'socket.io-client';
+import { devLog } from './devLog';
 
 const SOCKET_URL = process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:5000';
 
@@ -21,11 +22,11 @@ class SocketClient {
     });
 
     this.socket.on('connect', () => {
-      console.log('[Socket] Connected:', this.socket?.id);
+      devLog('[Socket] Connected:', this.socket?.id);
     });
 
     this.socket.on('disconnect', (reason) => {
-      console.log('[Socket] Disconnected:', reason);
+      devLog('[Socket] Disconnected:', reason);
     });
 
     this.socket.on('connect_error', (err) => {
@@ -33,7 +34,7 @@ class SocketClient {
     });
 
     this.socket.on('reconnect', (attempt) => {
-      console.log('[Socket] Reconnected after', attempt, 'attempts');
+      devLog('[Socket] Reconnected after', attempt, 'attempts');
     });
 
     return this.socket;
