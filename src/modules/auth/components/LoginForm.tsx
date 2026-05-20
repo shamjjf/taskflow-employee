@@ -9,25 +9,21 @@ import { cn } from '@/lib/utils';
 
 type DemoRole = 'team_leader' | 'employee';
 
-const DEMO_ACCOUNTS: Record<DemoRole, { email: string; password: string; label: string; desc: string }> = {
+const ROLE_TABS: Record<DemoRole, { label: string; desc: string }> = {
   team_leader: {
-    email: 'arjun@acme.com',
-    password: 'password',
     label: 'Team Leader',
-    desc: 'Development dept — manage team, approve reports',
+    desc: 'Manage your team and approve reports',
   },
   employee: {
-    email: 'ananya@acme.com',
-    password: 'password',
     label: 'Employee',
-    desc: 'Development dept — own tasks and reports',
+    desc: 'View your own tasks and submit reports',
   },
 };
 
 export function LoginForm() {
   const [selectedRole, setSelectedRole] = useState<DemoRole>('employee');
-  const [email, setEmail] = useState(DEMO_ACCOUNTS.employee.email);
-  const [password, setPassword] = useState(DEMO_ACCOUNTS.employee.password);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const router = useRouter();
@@ -35,8 +31,6 @@ export function LoginForm() {
 
   const handleRoleChange = (role: DemoRole) => {
     setSelectedRole(role);
-    setEmail(DEMO_ACCOUNTS[role].email);
-    setPassword(DEMO_ACCOUNTS[role].password);
   };
 
   const handleSubmit = async (e: FormEvent) => {
@@ -79,7 +73,7 @@ export function LoginForm() {
         <p className="text-[#71717a] mb-5 text-sm">Sign in to your account</p>
 
         <div className="grid grid-cols-2 gap-1 mb-5 p-1 bg-surface-muted rounded-md">
-          {(Object.keys(DEMO_ACCOUNTS) as DemoRole[]).map((role) => (
+          {(Object.keys(ROLE_TABS) as DemoRole[]).map((role) => (
             <button
               key={role}
               type="button"
@@ -91,7 +85,7 @@ export function LoginForm() {
                   : 'text-[#71717a] hover:text-[#18181b]'
               )}
             >
-              {DEMO_ACCOUNTS[role].label}
+              {ROLE_TABS[role].label}
             </button>
           ))}
         </div>
@@ -123,7 +117,7 @@ export function LoginForm() {
           </Button>
         </form>
         <div className="mt-5 p-3 bg-info-soft rounded-md text-xs text-info leading-relaxed">
-          <strong>Demo:</strong> {DEMO_ACCOUNTS[selectedRole].desc}
+          <strong>Demo:</strong> {ROLE_TABS[selectedRole].desc}
         </div>
       </div>
     </div>
