@@ -85,7 +85,7 @@ export function ProfileMenu() {
               <User size={14} className="text-[#71717a]" />
               My Profile
             </button>
-            <button
+            {/* <button
               onClick={() => {
                 router.push('/profile');
                 setIsOpen(false);
@@ -94,7 +94,7 @@ export function ProfileMenu() {
             >
               <Settings size={14} className="text-[#71717a]" />
               Settings
-            </button>
+            </button> */}
           </div>
 
           <div className="border-t border-border py-1">
