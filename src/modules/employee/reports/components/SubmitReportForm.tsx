@@ -4,16 +4,18 @@ import { useState, useEffect, FormEvent } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Card, CardBody, Button, Select } from '@/components/ui';
-import { Send, Save, RotateCcw } from 'lucide-react';
+import { Send, RotateCcw } from 'lucide-react';
 import { employeeReportsService } from '../services/employeeReportsService';
 import { employeeTasksService } from '../../tasks/services/employeeTasksService';
 import { normalizeReport } from '@/lib/normalizers';
+import { useRole } from '@/hooks/useRole';
 import type { ReportType } from '@/types';
 
 export function SubmitReportForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const queryClient = useQueryClient();
+  const { isTeamLeader } = useRole();
   const editId = searchParams.get('id');
   const isEditMode = Boolean(editId);
   const reportId = editId ? Number(editId) : null;
@@ -107,10 +109,6 @@ export function SubmitReportForm() {
         taskId: taskId ? Number(taskId) : undefined,
       });
     }
-  };
-
-  const handleSaveDraft = () => {
-    alert('Draft saved locally. (Draft-saving endpoint not yet implemented on backend.)');
   };
 
   if (isEditMode && isLoadingReport) {
@@ -212,7 +210,12 @@ export function SubmitReportForm() {
           <div className="p-2.5 sm:p-3 bg-info-soft border border-info/20 rounded-md">
             <div className="text-[12px] sm:text-[13px] text-info font-medium mb-1">📌 Approval Flow</div>
             <div className="text-[11.5px] sm:text-[12.5px] text-info/90 leading-relaxed">
-              {isEditMode ? (
+              {isTeamLeader ? (
+                <>
+                  As a Team Leader, your report is <strong>auto-approved</strong> on submission
+                  and becomes visible to the Super Admin and Admin immediately — no review queue.
+                </>
+              ) : isEditMode ? (
                 <>
                   Your revised report will be sent back to your <strong>Team Leader</strong> for
                   review. Once approved, it becomes visible to the Super Admin.
@@ -226,22 +229,7 @@ export function SubmitReportForm() {
             </div>
           </div>
 
-          <div className="flex items-center justify-between gap-2 pt-2 border-t border-border">
-            {isEditMode ? (
-              <span />
-            ) : (
-              <Button
-                type="button"
-                variant="secondary"
-                onClick={handleSaveDraft}
-                className="!px-2.5 !py-1.5 !text-[11.5px] sm:!px-3.5 sm:!py-2 sm:!text-[13px]"
-              >
-                <Save size={12} className="sm:hidden" />
-                <Save size={14} className="hidden sm:block" />
-                <span className="sm:hidden">Draft</span>
-                <span className="hidden sm:inline">Save as Draft</span>
-              </Button>
-            )}
+          <div className="flex items-center justify-end gap-2 pt-2 border-t border-border">
             <div className="flex gap-1.5 sm:gap-2">
               <Button
                 type="button"

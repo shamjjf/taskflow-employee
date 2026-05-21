@@ -7,6 +7,7 @@ import { EmployeeTaskCard } from './EmployeeTaskCard';
 import { employeeTasksService } from '../services/employeeTasksService';
 import { normalizeTask } from '@/lib/normalizers';
 import { useSocket, useSocketEvent } from '@/hooks/useSocket';
+import { useRole } from '@/hooks/useRole';
 import type { Task } from '@/types';
 
 type TabKey = 'all' | 'assigned' | 'in_progress' | 'in_review' | 'completed';
@@ -21,6 +22,7 @@ const tabs: { key: TabKey; label: string; filter: (t: Task) => boolean }[] = [
 
 export function MyTasksList() {
   const queryClient = useQueryClient();
+  const { isTeamLeader, user } = useRole();
   const [activeTab, setActiveTab] = useState<TabKey>('all');
   const [actionError, setActionError] = useState('');
   const [actionSuccess, setActionSuccess] = useState('');
@@ -145,7 +147,12 @@ export function MyTasksList() {
     if (task.status === 'assigned' || task.status === 'overdue') {
       startMutation.mutate(task.id);
     } else if (task.status === 'in_progress') {
-      reviewMutation.mutate(task.id);
+      const isOwnTask = !!user && task.assignees.some((a) => a.userId === user.id);
+      if (isTeamLeader && isOwnTask) {
+        completeMutation.mutate(task.id);
+      } else {
+        reviewMutation.mutate(task.id);
+      }
     }
   };
 

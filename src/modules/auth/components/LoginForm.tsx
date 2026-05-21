@@ -5,33 +5,17 @@ import { useRouter } from 'next/navigation';
 import { Input, Button } from '@/components/ui';
 import { useAuthStore } from '@/store/authStore';
 import { authService } from '../services/authService';
-import { cn } from '@/lib/utils';
 
-type DemoRole = 'team_leader' | 'employee';
-
-const ROLE_TABS: Record<DemoRole, { label: string; desc: string }> = {
-  team_leader: {
-    label: 'Team Leader',
-    desc: 'Manage your team and approve reports',
-  },
-  employee: {
-    label: 'Employee',
-    desc: 'View your own tasks and submit reports',
-  },
-};
+type LoginRole = 'team_leader' | 'employee';
 
 export function LoginForm() {
-  const [selectedRole, setSelectedRole] = useState<DemoRole>('employee');
+  const [selectedRole, setSelectedRole] = useState<LoginRole>('employee');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const router = useRouter();
   const login = useAuthStore((s) => s.login);
-
-  const handleRoleChange = (role: DemoRole) => {
-    setSelectedRole(role);
-  };
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -42,6 +26,13 @@ export function LoginForm() {
 
       if (user.role === 'super_admin') {
         setError('Super Admins should use the admin portal instead.');
+        setLoading(false);
+        return;
+      }
+
+      if (user.role !== selectedRole) {
+        const expectedLabel = selectedRole === 'team_leader' ? 'Team Leader' : 'Employee';
+        setError(`This account is not a ${expectedLabel}. Please select the correct role.`);
         setLoading(false);
         return;
       }
@@ -72,22 +63,35 @@ export function LoginForm() {
         <h1 className="text-[22px] font-semibold mb-1.5 tracking-tight">Welcome back</h1>
         <p className="text-[#71717a] mb-5 text-sm">Sign in to your account</p>
 
-        <div className="grid grid-cols-2 gap-1 mb-5 p-1 bg-surface-muted rounded-md">
-          {(Object.keys(ROLE_TABS) as DemoRole[]).map((role) => (
-            <button
-              key={role}
-              type="button"
-              onClick={() => handleRoleChange(role)}
-              className={cn(
-                'py-2 px-3 rounded text-[13px] font-medium transition-all',
-                selectedRole === role
-                  ? 'bg-white text-[#18181b] shadow-sm'
-                  : 'text-[#71717a] hover:text-[#18181b]'
-              )}
-            >
-              {ROLE_TABS[role].label}
-            </button>
-          ))}
+        <div className="grid grid-cols-2 gap-2 p-1 bg-[#f4f4f5] border border-border rounded-lg mb-5">
+          <button
+            type="button"
+            onClick={() => {
+              setSelectedRole('employee');
+              setError('');
+            }}
+            className={`py-2 text-sm font-medium rounded-md transition-colors ${
+              selectedRole === 'employee'
+                ? 'bg-white text-primary shadow-sm border border-border'
+                : 'text-[#71717a] hover:text-foreground'
+            }`}
+          >
+            Login as Employee
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setSelectedRole('team_leader');
+              setError('');
+            }}
+            className={`py-2 text-sm font-medium rounded-md transition-colors ${
+              selectedRole === 'team_leader'
+                ? 'bg-white text-primary shadow-sm border border-border'
+                : 'text-[#71717a] hover:text-foreground'
+            }`}
+          >
+            Login as Team Leader
+          </button>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -96,14 +100,18 @@ export function LoginForm() {
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
+            placeholder="you@example.com"
             required
+            autoComplete="email"
           />
           <Input
             label="Password"
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
+            placeholder="Enter your password"
             required
+            autoComplete="current-password"
           />
           {error && <p className="text-xs text-danger">{error}</p>}
           <Button
@@ -116,9 +124,6 @@ export function LoginForm() {
             {loading ? 'Signing in...' : 'Sign in →'}
           </Button>
         </form>
-        <div className="mt-5 p-3 bg-info-soft rounded-md text-xs text-info leading-relaxed">
-          <strong>Demo:</strong> {ROLE_TABS[selectedRole].desc}
-        </div>
       </div>
     </div>
   );

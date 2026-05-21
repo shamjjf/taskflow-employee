@@ -161,6 +161,9 @@ export function TaskDetail({ taskId }: TaskDetailProps) {
   }
 
   const status = statusLabels[task.status];
+  const isAssignee = currentUser
+    ? task.assignees.some((a) => a.userId === currentUser.id)
+    : false;
 
   const handleStatusChange = () => {
     if (task.status === 'assigned') {
@@ -196,7 +199,7 @@ export function TaskDetail({ taskId }: TaskDetailProps) {
           )}
 
           <div className="flex flex-wrap gap-2 mb-2 sm:mb-6">
-            {task.status === 'assigned' && (
+            {isAssignee && task.status === 'assigned' && (
               <Button
                 variant="primary"
                 onClick={handleStatusChange}
@@ -206,10 +209,20 @@ export function TaskDetail({ taskId }: TaskDetailProps) {
                 {startMutation.isPending ? 'Starting...' : 'Start Task'}
               </Button>
             )}
-            {task.status === 'in_progress' && (
+            {isAssignee && task.status === 'in_progress' && (
               <Button
                 variant="primary"
                 onClick={handleStatusChange}
+                disabled={completeMutation.isPending}
+              >
+                <CheckCircle2 size={14} strokeWidth={2.5} />
+                {completeMutation.isPending ? 'Completing...' : 'Mark Complete'}
+              </Button>
+            )}
+            {isAssignee && task.status === 'in_review' && currentUser?.role === 'team_leader' && (
+              <Button
+                variant="primary"
+                onClick={() => completeMutation.mutate()}
                 disabled={completeMutation.isPending}
               >
                 <CheckCircle2 size={14} strokeWidth={2.5} />

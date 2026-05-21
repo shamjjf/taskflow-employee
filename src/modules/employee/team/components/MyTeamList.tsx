@@ -4,13 +4,14 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Card, CardBody, Avatar, Badge, Button } from '@/components/ui';
-import { MessageSquare, Mail, BarChart3, TrendingUp } from 'lucide-react';
+import { MessageSquare, Mail, BarChart3, TrendingUp, Plus } from 'lucide-react';
 import { api } from '@/lib/api';
 import { useRole } from '@/hooks/useRole';
 import { useAuthStore } from '@/store/authStore';
 import { USER_ROLE_LABELS } from '@/constants';
 import { getInitials, formatRelativeTime } from '@/lib/utils';
 import { chatService } from '@/modules/chat/services/chatService';
+import { AddTeamMemberModal } from './AddTeamMemberModal';
 import type { ApiResponse } from '@/types';
 
 const colorForId = (id: number) => {
@@ -34,6 +35,7 @@ export function MyTeamList() {
   const { isTeamLeader } = useRole();
   const currentUser = useAuthStore((s) => s.user);
   const [startingChatWithId, setStartingChatWithId] = useState<number | null>(null);
+  const [isAddMemberOpen, setIsAddMemberOpen] = useState(false);
 
   const { data, isLoading } = useQuery({
     queryKey: ['department-members', currentUser?.departmentId],
@@ -128,15 +130,24 @@ export function MyTeamList() {
               : `Team Members (${teamMembers.length})`}
           </h2>
           {isTeamLeader && (
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={() => router.push('/team/performance')}
-              className="self-start sm:self-auto"
-            >
-              <BarChart3 size={12} />
-              View Performance
-            </Button>
+            <div className="flex flex-wrap gap-2 self-start sm:self-auto">
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={() => setIsAddMemberOpen(true)}
+              >
+                <Plus size={12} strokeWidth={2.5} />
+                Add Member
+              </Button>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => router.push('/team/performance')}
+              >
+                <BarChart3 size={12} />
+                View Performance
+              </Button>
+            </div>
           )}
         </div>
         <div className="flex flex-col gap-2.5">
@@ -209,6 +220,13 @@ export function MyTeamList() {
           })}
         </div>
       </div>
+
+      {isTeamLeader && (
+        <AddTeamMemberModal
+          isOpen={isAddMemberOpen}
+          onClose={() => setIsAddMemberOpen(false)}
+        />
+      )}
 
       <div className="p-3 bg-info-soft rounded-md text-[12.5px] text-info leading-relaxed">
         {isTeamLeader ? (

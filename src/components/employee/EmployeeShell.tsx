@@ -2,12 +2,14 @@
 
 import { ReactNode, useCallback, useEffect, useState } from 'react';
 import dynamic from 'next/dynamic';
+import { useQueryClient } from '@tanstack/react-query';
 import { cn } from '@/lib/utils';
 import { EmployeeSidebar } from './EmployeeSidebar';
 import { EmployeeTopbar } from './EmployeeTopbar';
 import { AssignTaskModal } from '@/modules/employee/team-tasks/components/AssignTaskModal';
 import { useRole } from '@/hooks/useRole';
-import { useSocket } from '@/hooks/useSocket';
+import { useSocket, useSocketEvent } from '@/hooks/useSocket';
+import { useAuthStore } from '@/store/authStore';
 
 // Dynamically import CallProvider with SSR disabled.
 // The Agora SDK accesses `window` at module load time, so it cannot be
@@ -25,9 +27,25 @@ const SIDEBAR_STORAGE_KEY = 'taskflow:sidebar:collapsed';
 
 export function EmployeeShell({ children }: EmployeeShellProps) {
   const { isTeamLeader } = useRole();
+  const queryClient = useQueryClient();
+  const departmentId = useAuthStore((s) => s.user?.departmentId);
 
   // Connect socket on mount — needed for chat realtime + call signaling
   useSocket();
+
+  // Refresh team & assignable-user lists the moment an admin creates a user
+  // in this department, so My Team and the Assign Task picker stay in sync
+  // without a page reload.
+  const refreshDepartmentMembers = useCallback(
+    (data: { user?: { departmentId?: number | null } }) => {
+      const incomingDeptId = data?.user?.departmentId ?? null;
+      if (incomingDeptId && departmentId && incomingDeptId === departmentId) {
+        queryClient.invalidateQueries({ queryKey: ['department-members', departmentId] });
+      }
+    },
+    [queryClient, departmentId]
+  );
+  useSocketEvent<{ user?: { departmentId?: number | null } }>('user:created', refreshDepartmentMembers);
 
   const [collapsed, setCollapsed] = useState(false);
 
