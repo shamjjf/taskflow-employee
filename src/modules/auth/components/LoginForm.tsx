@@ -6,7 +6,10 @@ import { Input, Button } from '@/components/ui';
 import { useAuthStore } from '@/store/authStore';
 import { authService } from '../services/authService';
 
+type LoginRole = 'team_leader' | 'employee';
+
 export function LoginForm() {
+  const [selectedRole, setSelectedRole] = useState<LoginRole>('employee');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -23,6 +26,13 @@ export function LoginForm() {
 
       if (user.role === 'super_admin') {
         setError('Super Admins should use the admin portal instead.');
+        setLoading(false);
+        return;
+      }
+
+      if (user.role !== selectedRole) {
+        const expectedLabel = selectedRole === 'team_leader' ? 'Team Leader' : 'Employee';
+        setError(`This account is not a ${expectedLabel}. Please select the correct role.`);
         setLoading(false);
         return;
       }
@@ -52,6 +62,37 @@ export function LoginForm() {
         </div>
         <h1 className="text-[22px] font-semibold mb-1.5 tracking-tight">Welcome back</h1>
         <p className="text-[#71717a] mb-5 text-sm">Sign in to your account</p>
+
+        <div className="grid grid-cols-2 gap-2 p-1 bg-[#f4f4f5] border border-border rounded-lg mb-5">
+          <button
+            type="button"
+            onClick={() => {
+              setSelectedRole('employee');
+              setError('');
+            }}
+            className={`py-2 text-sm font-medium rounded-md transition-colors ${
+              selectedRole === 'employee'
+                ? 'bg-white text-primary shadow-sm border border-border'
+                : 'text-[#71717a] hover:text-foreground'
+            }`}
+          >
+            Login as Employee
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setSelectedRole('team_leader');
+              setError('');
+            }}
+            className={`py-2 text-sm font-medium rounded-md transition-colors ${
+              selectedRole === 'team_leader'
+                ? 'bg-white text-primary shadow-sm border border-border'
+                : 'text-[#71717a] hover:text-foreground'
+            }`}
+          >
+            Login as Team Leader
+          </button>
+        </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <Input
