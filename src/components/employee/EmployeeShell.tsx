@@ -10,6 +10,7 @@ import { AssignTaskModal } from '@/modules/employee/team-tasks/components/Assign
 import { useRole } from '@/hooks/useRole';
 import { useSocket, useSocketEvent } from '@/hooks/useSocket';
 import { useAuthStore } from '@/store/authStore';
+import type { User } from '@/types';
 
 // Dynamically import CallProvider with SSR disabled.
 // The Agora SDK accesses `window` at module load time, so it cannot be
@@ -28,7 +29,9 @@ const SIDEBAR_STORAGE_KEY = 'taskflow:sidebar:collapsed';
 export function EmployeeShell({ children }: EmployeeShellProps) {
   const { isTeamLeader } = useRole();
   const queryClient = useQueryClient();
+  const currentUserId = useAuthStore((s) => s.user?.id);
   const departmentId = useAuthStore((s) => s.user?.departmentId);
+  const setStoreUser = useAuthStore((s) => s.setUser);
 
   // Connect socket on mount — needed for chat realtime + call signaling
   useSocket();
@@ -46,6 +49,43 @@ export function EmployeeShell({ children }: EmployeeShellProps) {
     [queryClient, departmentId]
   );
   useSocketEvent<{ user?: { departmentId?: number | null } }>('user:created', refreshDepartmentMembers);
+
+  // When any user updates their profile (esp. photo), refresh every list that
+  // shows their avatar/name so the new image appears without a reload.
+  const refreshUserOnProfileUpdate = useCallback(
+    (data: { user?: { id?: number; departmentId?: number | null; profileImage?: string | null; name?: string } }) => {
+      const updated = data?.user;
+      if (!updated?.id) return;
+
+      queryClient.invalidateQueries({ queryKey: ['chat-users'] });
+      queryClient.invalidateQueries({ queryKey: ['conversations'] });
+      queryClient.invalidateQueries({ queryKey: ['my-tasks'] });
+      queryClient.invalidateQueries({ queryKey: ['team-tasks'] });
+      if (updated.departmentId) {
+        queryClient.invalidateQueries({ queryKey: ['department-members', updated.departmentId] });
+      } else if (departmentId) {
+        queryClient.invalidateQueries({ queryKey: ['department-members', departmentId] });
+      }
+
+      // Sync the auth store if this is the current user (covers other tabs
+      // updating the same account).
+      if (updated.id === currentUserId) {
+        const existing = useAuthStore.getState().user;
+        if (existing) {
+          setStoreUser({
+            ...existing,
+            ...(updated as Partial<User>),
+            profileImage: updated.profileImage ?? existing.profileImage,
+          } as User);
+        }
+      }
+    },
+    [queryClient, currentUserId, departmentId, setStoreUser]
+  );
+  useSocketEvent<{ user?: { id?: number; departmentId?: number | null; profileImage?: string | null; name?: string } }>(
+    'user:profileUpdated',
+    refreshUserOnProfileUpdate
+  );
 
   const [collapsed, setCollapsed] = useState(false);
 

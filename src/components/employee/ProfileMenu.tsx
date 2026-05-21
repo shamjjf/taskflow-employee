@@ -44,7 +44,7 @@ export function ProfileMenu() {
           isOpen ? 'bg-surface-muted' : 'hover:bg-surface-muted'
         )}
       >
-        <Avatar initials={user.initials || 'U'} color={user.color} size="md" />
+        <Avatar initials={user.initials || 'U'} color={user.color} src={user.profileImage} size="md" />
         <div className="hidden sm:flex flex-col items-start min-w-0">
           <div className="text-[12.5px] font-medium leading-tight truncate max-w-[120px]">
             {user.name}

@@ -25,6 +25,7 @@ interface DeptUser {
   email: string;
   role: 'super_admin' | 'team_leader' | 'employee';
   designation?: string;
+  profileImage?: string;
   status: 'active' | 'inactive';
   lastLoginAt?: string;
 }
@@ -85,6 +86,7 @@ export function MyTeamList() {
                 <Avatar
                   initials={getInitials(teamLeader.name)}
                   color={colorForId(teamLeader.id)}
+                  src={teamLeader.profileImage}
                   size="lg"
                 />
                 <div className="flex-1 min-w-0">
@@ -160,6 +162,7 @@ export function MyTeamList() {
                     <Avatar
                       initials={getInitials(member.name)}
                       color={colorForId(member.id)}
+                      src={member.profileImage}
                       size="lg"
                     />
                     <div className="flex-1 min-w-0">
