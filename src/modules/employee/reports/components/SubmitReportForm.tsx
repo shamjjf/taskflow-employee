@@ -8,12 +8,14 @@ import { Send, RotateCcw } from 'lucide-react';
 import { employeeReportsService } from '../services/employeeReportsService';
 import { employeeTasksService } from '../../tasks/services/employeeTasksService';
 import { normalizeReport } from '@/lib/normalizers';
+import { useRole } from '@/hooks/useRole';
 import type { ReportType } from '@/types';
 
 export function SubmitReportForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const queryClient = useQueryClient();
+  const { isTeamLeader } = useRole();
   const editId = searchParams.get('id');
   const isEditMode = Boolean(editId);
   const reportId = editId ? Number(editId) : null;
@@ -208,7 +210,12 @@ export function SubmitReportForm() {
           <div className="p-2.5 sm:p-3 bg-info-soft border border-info/20 rounded-md">
             <div className="text-[12px] sm:text-[13px] text-info font-medium mb-1">📌 Approval Flow</div>
             <div className="text-[11.5px] sm:text-[12.5px] text-info/90 leading-relaxed">
-              {isEditMode ? (
+              {isTeamLeader ? (
+                <>
+                  As a Team Leader, your report is <strong>auto-approved</strong> on submission
+                  and becomes visible to the Super Admin and Admin immediately — no review queue.
+                </>
+              ) : isEditMode ? (
                 <>
                   Your revised report will be sent back to your <strong>Team Leader</strong> for
                   review. Once approved, it becomes visible to the Super Admin.
