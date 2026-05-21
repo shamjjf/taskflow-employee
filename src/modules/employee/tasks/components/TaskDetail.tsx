@@ -219,6 +219,16 @@ export function TaskDetail({ taskId }: TaskDetailProps) {
                 {completeMutation.isPending ? 'Completing...' : 'Mark Complete'}
               </Button>
             )}
+            {isAssignee && task.status === 'in_review' && currentUser?.role === 'team_leader' && (
+              <Button
+                variant="primary"
+                onClick={() => completeMutation.mutate()}
+                disabled={completeMutation.isPending}
+              >
+                <CheckCircle2 size={14} strokeWidth={2.5} />
+                {completeMutation.isPending ? 'Completing...' : 'Mark Complete'}
+              </Button>
+            )}
           </div>
         </div>
 

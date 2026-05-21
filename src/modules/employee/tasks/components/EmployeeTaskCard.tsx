@@ -187,10 +187,22 @@ export function EmployeeTaskCard({
             </Button>
           )}
           {isAssignee && task.status === 'in_review' && (
-            <Button variant="primary" size="sm" disabled={true}>
-              <CheckCircle2 size={12} strokeWidth={2.5} />
-              {'Under review'}
-            </Button>
+            isTeamLeader ? (
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={handleAcceptClick}
+                disabled={isAccepting}
+              >
+                <CheckCircle2 size={12} strokeWidth={2.5} />
+                {isAccepting ? 'Completing...' : 'Mark Complete'}
+              </Button>
+            ) : (
+              <Button variant="primary" size="sm" disabled={true}>
+                <CheckCircle2 size={12} strokeWidth={2.5} />
+                {'Under review'}
+              </Button>
+            )
           )}
           {isTeamLeader && !isAssignee && task.status === 'in_review' && (
             <>
