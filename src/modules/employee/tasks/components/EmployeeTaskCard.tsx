@@ -45,8 +45,9 @@ export function EmployeeTaskCard({
   isRejecting = false,
 }: EmployeeTaskCardProps) {
   const router = useRouter();
-  const { isTeamLeader } = useRole();
+  const { isTeamLeader, user } = useRole();
   const status = statusLabels[task.status];
+  const isAssignee = user ? task.assignees.some((a) => a.userId === user.id) : false;
 
   const goToDetail = () => router.push(`/task/${task.id}`);
 
@@ -173,49 +174,44 @@ export function EmployeeTaskCard({
             <span className="hidden sm:inline">View & Comment</span>
             <span className="sm:hidden">View</span>
           </Button>
-          {isTeamLeader ? (
-            task.status === 'in_review' && (
-              <>
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  onClick={handleRejectClick}
-                  disabled={isRejecting || isAccepting}
-                >
-                  <X size={12} strokeWidth={2.5} />
-                  {isRejecting ? 'Sending back...' : 'Reject'}
-                </Button>
-                <Button
-                  variant="primary"
-                  size="sm"
-                  onClick={handleAcceptClick}
-                  disabled={isAccepting || isRejecting}
-                >
-                  <CheckCircle2 size={12} strokeWidth={2.5} />
-                  {isAccepting ? 'Accepting...' : 'Accept'}
-                </Button>
-              </>
-            )
-          ) : (
+          {isAssignee && (task.status === 'assigned' || task.status === 'overdue') && (
+            <Button variant="primary" size="sm" onClick={handleActionClick} disabled={isLoading}>
+              <Play size={12} strokeWidth={2.5} />
+              {isLoading ? 'Starting...' : 'Start Task'}
+            </Button>
+          )}
+          {isAssignee && task.status === 'in_progress' && (
+            <Button variant="primary" size="sm" onClick={handleActionClick} disabled={isLoading}>
+              <CheckCircle2 size={12} strokeWidth={2.5} />
+              {isLoading ? 'Completing...' : 'Mark Complete'}
+            </Button>
+          )}
+          {isAssignee && task.status === 'in_review' && (
+            <Button variant="primary" size="sm" disabled={true}>
+              <CheckCircle2 size={12} strokeWidth={2.5} />
+              {'Under review'}
+            </Button>
+          )}
+          {isTeamLeader && !isAssignee && task.status === 'in_review' && (
             <>
-              {(task.status === 'assigned' || task.status === 'overdue') && (
-                <Button variant="primary" size="sm" onClick={handleActionClick} disabled={isLoading}>
-                  <Play size={12} strokeWidth={2.5} />
-                  {isLoading ? 'Starting...' : 'Start Task'}
-                </Button>
-              )}
-              {task.status === 'in_progress' && (
-                <Button variant="primary" size="sm" onClick={handleActionClick} disabled={isLoading}>
-                  <CheckCircle2 size={12} strokeWidth={2.5} />
-                  {isLoading ? 'Completing...' : 'Mark Complete'}
-                </Button>
-              )}
-              {task.status === 'in_review' && (
-                <Button variant="primary" size="sm" disabled={true}>
-                  <CheckCircle2 size={12} strokeWidth={2.5} />
-                  {'Under review'}
-                </Button>
-              )}
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={handleRejectClick}
+                disabled={isRejecting || isAccepting}
+              >
+                <X size={12} strokeWidth={2.5} />
+                {isRejecting ? 'Sending back...' : 'Reject'}
+              </Button>
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={handleAcceptClick}
+                disabled={isAccepting || isRejecting}
+              >
+                <CheckCircle2 size={12} strokeWidth={2.5} />
+                {isAccepting ? 'Accepting...' : 'Accept'}
+              </Button>
             </>
           )}
         </div>
