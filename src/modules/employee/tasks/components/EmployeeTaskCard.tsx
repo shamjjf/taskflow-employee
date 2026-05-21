@@ -150,8 +150,15 @@ export function EmployeeTaskCard({
       </div>
 
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5 sm:gap-3">
-        <div className="text-[11px] sm:text-[11.5px] text-[#71717a]">
-          {task.createdByName ? `Assigned by ${task.createdByName}` : 'Click to view & comment'}
+        <div className="text-[11px] sm:text-[11.5px] text-[#71717a] flex flex-col gap-0.5 min-w-0">
+          <span className="truncate">
+            {task.createdByName ? `Assigned by ${task.createdByName}` : 'Click to view & comment'}
+          </span>
+          {task.assignees.length > 0 && (
+            <span className="truncate">
+              Assigned to {task.assignees.map((a) => a.name).join(', ')}
+            </span>
+          )}
         </div>
         <div className="flex flex-wrap gap-2">
           <Button
