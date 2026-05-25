@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Card, CardBody, Avatar, Badge, Button } from '@/components/ui';
-import { MessageSquare, Mail, BarChart3, TrendingUp, Plus } from 'lucide-react';
+import { MessageSquare, Mail, BarChart3, TrendingUp, Plus, Pencil } from 'lucide-react';
 import { api } from '@/lib/api';
 import { useRole } from '@/hooks/useRole';
 import { useAuthStore } from '@/store/authStore';
@@ -12,6 +12,7 @@ import { USER_ROLE_LABELS } from '@/constants';
 import { getInitials, formatRelativeTime } from '@/lib/utils';
 import { chatService } from '@/modules/chat/services/chatService';
 import { AddTeamMemberModal } from './AddTeamMemberModal';
+import { EditTeamMemberModal } from './EditTeamMemberModal';
 import type { ApiResponse } from '@/types';
 
 const colorForId = (id: number) => {
@@ -26,6 +27,7 @@ interface DeptUser {
   role: 'super_admin' | 'team_leader' | 'employee';
   designation?: string;
   profileImage?: string;
+  phone?: string;
   status: 'active' | 'inactive';
   lastLoginAt?: string;
 }
@@ -37,6 +39,7 @@ export function MyTeamList() {
   const currentUser = useAuthStore((s) => s.user);
   const [startingChatWithId, setStartingChatWithId] = useState<number | null>(null);
   const [isAddMemberOpen, setIsAddMemberOpen] = useState(false);
+  const [editingMember, setEditingMember] = useState<DeptUser | null>(null);
 
   const { data, isLoading } = useQuery({
     queryKey: ['department-members', currentUser?.departmentId],
@@ -192,6 +195,15 @@ export function MyTeamList() {
                       <div className="flex gap-1 sm:gap-1.5 shrink-0">
                         {isTeamLeader && (
                           <button
+                            onClick={() => setEditingMember(member)}
+                            className="w-8 h-8 sm:w-9 sm:h-9 rounded-md flex items-center justify-center text-[#71717a] bg-surface-muted hover:bg-[#e4e4e7] hover:text-[#18181b] transition-colors"
+                            title="Edit member"
+                          >
+                            <Pencil size={14} />
+                          </button>
+                        )}
+                        {isTeamLeader && (
+                          <button
                             onClick={() => router.push(`/team/performance/${member.id}`)}
                             className="w-8 h-8 sm:w-9 sm:h-9 rounded-md flex items-center justify-center text-[#71717a] bg-surface-muted hover:bg-[#e4e4e7] hover:text-[#18181b] transition-colors"
                             title="View performance"
@@ -225,10 +237,17 @@ export function MyTeamList() {
       </div>
 
       {isTeamLeader && (
-        <AddTeamMemberModal
-          isOpen={isAddMemberOpen}
-          onClose={() => setIsAddMemberOpen(false)}
-        />
+        <>
+          <AddTeamMemberModal
+            isOpen={isAddMemberOpen}
+            onClose={() => setIsAddMemberOpen(false)}
+          />
+          <EditTeamMemberModal
+            isOpen={editingMember !== null}
+            onClose={() => setEditingMember(null)}
+            member={editingMember}
+          />
+        </>
       )}
 
       <div className="p-3 bg-info-soft rounded-md text-[12.5px] text-info leading-relaxed">
