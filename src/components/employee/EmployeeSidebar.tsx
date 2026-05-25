@@ -134,7 +134,7 @@ export function EmployeeSidebar({ collapsed, onToggle }: EmployeeSidebarProps) {
             Department
           </div>
           <div className="flex items-center gap-2">
-            <div className="text-[13px] font-medium truncate">{user?.departmentName || 'Development'}</div>
+            <div className="text-[13px] font-medium truncate">{user?.departmentName || 'No department'}</div>
             {isTeamLeader && <Badge variant="purple" withDot={false}>TL</Badge>}
           </div>
         </div>
