@@ -5,12 +5,22 @@ import Link from 'next/link';
 import { Card, CardHeader, Avatar, Badge } from '@/components/ui';
 import { StatCard } from '@/components/shared';
 import { Users, FileCheck, CheckCircle, ClipboardList } from 'lucide-react';
+import { api } from '@/lib/api';
+import { useAuthStore } from '@/store/authStore';
 import { teamTasksService } from '../../team-tasks/services/teamTasksService';
 import { approvalService } from '../../approval/services/approvalService';
 import { normalizeTask, normalizeReport } from '@/lib/normalizers';
 import { formatRelativeTime } from '@/lib/utils';
+import type { ApiResponse } from '@/types';
+
+interface DeptMember {
+  id: number;
+  role: 'super_admin' | 'team_leader' | 'employee';
+}
 
 export function TLDashboardStats() {
+  const departmentId = useAuthStore((s) => s.user?.departmentId);
+
   const { data: tasks } = useQuery({
     queryKey: ['team-tasks'],
     queryFn: () => teamTasksService.list(),
@@ -21,8 +31,22 @@ export function TLDashboardStats() {
     queryFn: () => approvalService.listPending(),
   });
 
+  // Team Size should reflect actual department members (employees), not
+  // derived from task assignees — otherwise it shows 0 until tasks exist.
+  const { data: members } = useQuery({
+    queryKey: ['department-members', departmentId],
+    queryFn: async () => {
+      if (!departmentId) return [];
+      const res = await api.get<ApiResponse<DeptMember[]>>(
+        `/departments/${departmentId}/members`
+      );
+      return res.data;
+    },
+    enabled: !!departmentId,
+  });
+
+  const teamSize = (members || []).filter((m) => m.role === 'employee').length;
   const normalizedTasks = (tasks || []).map(normalizeTask);
-  const teamSize = new Set(normalizedTasks.flatMap((t) => t.assignees.map((a) => a.userId))).size;
   const activeTasks = normalizedTasks.filter(
     (t) => t.status === 'assigned' || t.status === 'in_progress'
   ).length;
