@@ -152,8 +152,8 @@ export function AssignTaskModal() {
             ]}
           />
           <Input
-            label="Deadline *"
-            type="date"
+            label="Deadline (date & time) *"
+            type="datetime-local"
             value={deadline}
             onChange={(e) => setDeadline(e.target.value)}
           />

@@ -1,12 +1,14 @@
 'use client';
 
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { cn, formatDateTime } from '@/lib/utils';
 import { Badge, Button } from '@/components/ui';
-import { Calendar, Clock, CheckCircle2, Play, MessageSquare, CalendarClock, X } from 'lucide-react';
+import { Calendar, Clock, CheckCircle2, Play, MessageSquare, CalendarClock, X, CalendarPlus } from 'lucide-react';
 import { TASK_PRIORITY_LABELS } from '@/constants';
 import type { Task } from '@/types';
 import { useRole } from '@/hooks/useRole';
+import { ExtendDeadlineModal } from '@/modules/employee/team-tasks/components/ExtendDeadlineModal';
 
 interface EmployeeTaskCardProps {
   task: Task;
@@ -48,6 +50,11 @@ export function EmployeeTaskCard({
   const { isTeamLeader, user } = useRole();
   const status = statusLabels[task.status];
   const isAssignee = user ? task.assignees.some((a) => a.userId === user.id) : false;
+  const isCreator = !!user && task.createdBy === user.id;
+  const canExtendDeadline =
+    (isTeamLeader || isCreator) &&
+    (task.status === 'assigned' || task.status === 'in_progress' || task.status === 'overdue');
+  const [extendOpen, setExtendOpen] = useState(false);
 
   const goToDetail = () => router.push(`/task/${task.id}`);
 
@@ -174,6 +181,20 @@ export function EmployeeTaskCard({
             <span className="hidden sm:inline">View & Comment</span>
             <span className="sm:hidden">View</span>
           </Button>
+          {canExtendDeadline && (
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={(e) => {
+                e.stopPropagation();
+                setExtendOpen(true);
+              }}
+            >
+              <CalendarPlus size={12} />
+              <span className="hidden sm:inline">Extend Deadline</span>
+              <span className="sm:hidden">Deadline</span>
+            </Button>
+          )}
           {isAssignee && (task.status === 'assigned' || task.status === 'overdue') && (
             <Button variant="primary" size="sm" onClick={handleActionClick} disabled={isLoading}>
               <Play size={12} strokeWidth={2.5} />
@@ -228,6 +249,13 @@ export function EmployeeTaskCard({
           )}
         </div>
       </div>
+      {canExtendDeadline && (
+        <ExtendDeadlineModal
+          isOpen={extendOpen}
+          onClose={() => setExtendOpen(false)}
+          task={task}
+        />
+      )}
     </div>
   );
 }
