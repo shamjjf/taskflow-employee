@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Modal, Button, Input, Select } from '@/components/ui';
+import { Modal, Button, Input, Select, MultiSelect } from '@/components/ui';
 import { useUIStore } from '@/store/uiStore';
 import { teamTasksService } from '../services/teamTasksService';
 import { api } from '@/lib/api';
@@ -23,7 +23,7 @@ export function AssignTaskModal() {
 
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [assigneeId, setAssigneeId] = useState('');
+  const [assigneeIds, setAssigneeIds] = useState<string[]>([]);
   const [priority, setPriority] = useState<TaskPriority>('medium');
   const [deadline, setDeadline] = useState('');
   const [error, setError] = useState('');
@@ -45,7 +45,7 @@ export function AssignTaskModal() {
   const resetForm = () => {
     setTitle('');
     setDescription('');
-    setAssigneeId('');
+    setAssigneeIds([]);
     setPriority('medium');
     setDeadline('');
     setError('');
@@ -60,7 +60,7 @@ export function AssignTaskModal() {
         departmentId: currentUser.departmentId,
         priority,
         deadline: new Date(deadline).toISOString(),
-        assigneeIds: [Number(assigneeId)],
+        assigneeIds: assigneeIds.map((id) => Number(id)),
       });
     },
     onSuccess: () => {
@@ -77,7 +77,7 @@ export function AssignTaskModal() {
 
   const handleCreate = () => {
     setError('');
-    if (!title.trim() || !assigneeId || !deadline) {
+    if (!title.trim() || assigneeIds.length === 0 || !deadline) {
       setError('Please fill in all required fields.');
       return;
     }
@@ -128,17 +128,16 @@ export function AssignTaskModal() {
             className="w-full px-3 py-2.5 border border-border rounded-[8px] bg-white focus:border-primary focus:ring-4 focus:ring-primary-soft focus:outline-none placeholder:text-[#a1a1aa] resize-none"
           />
         </div>
-        <Select
+        <MultiSelect
           label="Assign To *"
-          value={assigneeId}
-          onChange={(e) => setAssigneeId(e.target.value)}
-          options={[
-            { value: '', label: 'Select a team member...' },
-            ...employeeMembers.map((u) => ({
-              value: String(u.id),
-              label: `${u.name}${u.designation ? ` (${u.designation})` : ''}`,
-            })),
-          ]}
+          value={assigneeIds}
+          onChange={setAssigneeIds}
+          placeholder="Select one or more team members..."
+          emptyHint="No employees in this department"
+          options={employeeMembers.map((u) => ({
+            value: String(u.id),
+            label: `${u.name}${u.designation ? ` (${u.designation})` : ''}`,
+          }))}
         />
         <div className="grid grid-cols-2 gap-3">
           <Select
