@@ -100,7 +100,7 @@ export function EmployeeSidebar({ collapsed, onToggle }: EmployeeSidebarProps) {
             T
           </div>
           {!collapsed && (
-            <div className="text-[15px] font-semibold tracking-tight truncate">TaskFlow</div>
+            <div className="text-[15px] font-semibold tracking-tight truncate">JJFIndia TaskFlow</div>
           )}
         </div>
         {!collapsed && (

@@ -1,5 +1,5 @@
 export const APP_CONFIG = {
-  name: 'TaskFlow',
+  name: 'JJFIndia TaskFlow',
   organizationName: 'Acme Corporation',
   version: '0.1.0',
 } as const;

@@ -58,7 +58,7 @@ export function LoginForm() {
           <div className="w-9 h-9 bg-primary rounded-lg flex items-center justify-center text-white font-bold text-lg">
             T
           </div>
-          <div className="text-lg font-semibold tracking-tight">TaskFlow</div>
+          <div className="text-lg font-semibold tracking-tight">JJFIndia TaskFlow</div>
         </div>
         <h1 className="text-[22px] font-semibold mb-1.5 tracking-tight">Welcome back</h1>
         <p className="text-[#71717a] mb-5 text-sm">Sign in to your account</p>

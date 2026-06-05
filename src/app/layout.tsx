@@ -3,7 +3,7 @@ import '@/styles/globals.css';
 import { Providers } from './providers';
 
 export const metadata: Metadata = {
-  title: 'TaskFlow — Employee panel',
+  title: 'JJFIndia TaskFlow — Employee panel',
   description: 'Task management system for multi-department organizations',
 };
 
