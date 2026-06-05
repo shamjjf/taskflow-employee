@@ -141,10 +141,21 @@ export function ChatLayout() {
   useEffect(() => {
     if (!activeId) return;
     socketClient.emit('chat:join', activeId);
+    // Tell the backend we've read up to now so the unread badge clears.
+    // Fire-and-forget — if it fails the sidebar count will just stay stale
+    // until the next event invalidation, which is acceptable.
+    chatService
+      .markRead(activeId)
+      .then(() => {
+        queryClient.invalidateQueries({ queryKey: ['conversations'] });
+      })
+      .catch(() => {
+        // ignored
+      });
     return () => {
       socketClient.emit('chat:leave', activeId);
     };
-  }, [activeId]);
+  }, [activeId, queryClient]);
 
   // Listen to incoming messages
   useEffect(() => {

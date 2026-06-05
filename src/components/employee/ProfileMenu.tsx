@@ -5,7 +5,8 @@ import { useRouter } from 'next/navigation';
 import { Avatar } from '@/components/ui';
 import { useAuthStore } from '@/store/authStore';
 import { useRole } from '@/hooks/useRole';
-import { LogOut, User, Settings, ChevronDown } from 'lucide-react';
+import { authService } from '@/modules/auth/services/authService';
+import { LogOut, User, ChevronDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export function ProfileMenu() {
@@ -25,11 +26,15 @@ export function ProfileMenu() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const handleLogout = () => {
-    logout();
-    if (typeof window !== 'undefined') {
-      localStorage.removeItem('refresh_token');
+  const handleLogout = async () => {
+    // Best-effort backend logout so the server-side refresh token is
+    // revoked alongside the local clear.
+    try {
+      await authService.logout();
+    } catch {
+      // ignored
     }
+    logout();
     router.push('/login');
   };
 
@@ -85,16 +90,6 @@ export function ProfileMenu() {
               <User size={14} className="text-[#71717a]" />
               My Profile
             </button>
-            {/* <button
-              onClick={() => {
-                router.push('/profile');
-                setIsOpen(false);
-              }}
-              className="w-full flex items-center gap-2.5 px-3 py-2 text-[13px] text-[#18181b] hover:bg-surface-muted transition-colors text-left"
-            >
-              <Settings size={14} className="text-[#71717a]" />
-              Settings
-            </button> */}
           </div>
 
           <div className="border-t border-border py-1">

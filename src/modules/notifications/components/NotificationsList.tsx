@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Card } from '@/components/ui';
 import { FilterBar, FilterSelect } from '@/components/shared';
@@ -9,6 +10,14 @@ import { Check, ClipboardList, AlertTriangle, MessageSquare, FileText } from 'lu
 import { notificationsService } from '../services/notificationsService';
 import type { LucideIcon } from 'lucide-react';
 import type { Notification } from '@/types';
+
+// Map a notification to the in-app route it should open when tapped.
+function destinationFor(n: Notification): string | null {
+  if (n.referenceType === 'task' && n.referenceId) return `/task/${n.referenceId}`;
+  if (n.referenceType === 'report' && n.referenceId) return `/my-reports`;
+  if (n.referenceType === 'message' && n.referenceId) return `/chat?conversation=${n.referenceId}`;
+  return null;
+}
 
 type NotificationCategory = 'task' | 'report' | 'message' | 'system';
 
@@ -35,6 +44,7 @@ const iconMap: Record<string, { Icon: LucideIcon; color: string; bg: string }> =
 };
 
 export function NotificationsList() {
+  const router = useRouter();
   const queryClient = useQueryClient();
   const [filter, setFilter] = useState('');
   const { data, isLoading } = useQuery({
@@ -42,10 +52,18 @@ export function NotificationsList() {
     queryFn: () => notificationsService.list(),
   });
 
-  const handleClick = async (id: number, isRead: boolean) => {
-    if (isRead) return;
-    await notificationsService.markRead(id);
-    queryClient.invalidateQueries({ queryKey: ['notifications'] });
+  const handleClick = async (n: Notification) => {
+    if (!n.isRead) {
+      try {
+        await notificationsService.markRead(n.id);
+        queryClient.invalidateQueries({ queryKey: ['notifications'] });
+        queryClient.invalidateQueries({ queryKey: ['notifications', 'unread-count'] });
+      } catch {
+        // navigate anyway so the user reaches the entity they tapped
+      }
+    }
+    const dest = destinationFor(n);
+    if (dest) router.push(dest);
   };
 
   const notifications = useMemo(() => data || [], [data]);
@@ -92,7 +110,7 @@ export function NotificationsList() {
               return (
                 <div
                   key={n.id}
-                  onClick={() => handleClick(n.id, n.isRead)}
+                  onClick={() => handleClick(n)}
                   className={cn(
                     'flex gap-3 px-5 py-3.5 border-b border-border last:border-b-0 cursor-pointer transition-colors',
                     n.isRead ? 'hover:bg-surface-muted' : 'bg-primary-soft hover:bg-[#e4e4fa]'

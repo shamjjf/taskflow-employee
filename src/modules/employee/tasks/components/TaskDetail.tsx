@@ -109,6 +109,22 @@ export function TaskDetail({ taskId }: TaskDetailProps) {
     },
   });
 
+  const reviewMutation = useMutation({
+    mutationFn: () => employeeTasksService.reviewTask(taskId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['task', taskId] });
+      queryClient.invalidateQueries({ queryKey: ['my-tasks'] });
+    },
+  });
+
+  const rejectMutation = useMutation({
+    mutationFn: (reason: string) => employeeTasksService.rejectTask(taskId, reason),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['task', taskId] });
+      queryClient.invalidateQueries({ queryKey: ['my-tasks'] });
+    },
+  });
+
   const commentMutation = useMutation({
     mutationFn: ({ message, attachmentUrl }: { message: string; attachmentUrl?: string }) =>
       employeeTasksService.addComment(taskId, message, attachmentUrl),
@@ -164,14 +180,8 @@ export function TaskDetail({ taskId }: TaskDetailProps) {
   const isAssignee = currentUser
     ? task.assignees.some((a) => a.userId === currentUser.id)
     : false;
-
-  const handleStatusChange = () => {
-    if (task.status === 'assigned') {
-      startMutation.mutate();
-    } else if (task.status === 'in_progress') {
-      completeMutation.mutate();
-    }
-  };
+  const canApprove =
+    currentUser?.role === 'team_leader' || currentUser?.role === 'super_admin';
 
   return (
     <div>
@@ -202,7 +212,7 @@ export function TaskDetail({ taskId }: TaskDetailProps) {
             {isAssignee && task.status === 'assigned' && (
               <Button
                 variant="primary"
-                onClick={handleStatusChange}
+                onClick={() => startMutation.mutate()}
                 disabled={startMutation.isPending}
               >
                 <Play size={14} strokeWidth={2.5} />
@@ -212,22 +222,37 @@ export function TaskDetail({ taskId }: TaskDetailProps) {
             {isAssignee && task.status === 'in_progress' && (
               <Button
                 variant="primary"
-                onClick={handleStatusChange}
-                disabled={completeMutation.isPending}
+                onClick={() => reviewMutation.mutate()}
+                disabled={reviewMutation.isPending}
               >
                 <CheckCircle2 size={14} strokeWidth={2.5} />
-                {completeMutation.isPending ? 'Completing...' : 'Mark Complete'}
+                {reviewMutation.isPending ? 'Submitting...' : 'Submit for Review'}
               </Button>
             )}
-            {isAssignee && task.status === 'in_review' && currentUser?.role === 'team_leader' && (
-              <Button
-                variant="primary"
-                onClick={() => completeMutation.mutate()}
-                disabled={completeMutation.isPending}
-              >
-                <CheckCircle2 size={14} strokeWidth={2.5} />
-                {completeMutation.isPending ? 'Completing...' : 'Mark Complete'}
-              </Button>
+            {task.status === 'in_review' && canApprove && (
+              <>
+                <Button
+                  variant="primary"
+                  onClick={() => completeMutation.mutate()}
+                  disabled={completeMutation.isPending}
+                >
+                  <CheckCircle2 size={14} strokeWidth={2.5} />
+                  {completeMutation.isPending ? 'Approving...' : 'Approve'}
+                </Button>
+                <Button
+                  variant="secondary"
+                  onClick={() => {
+                    const reason = window.prompt('Reason for sending back:');
+                    if (reason && reason.trim()) rejectMutation.mutate(reason.trim());
+                  }}
+                  disabled={rejectMutation.isPending}
+                >
+                  {rejectMutation.isPending ? 'Sending back...' : 'Send Back'}
+                </Button>
+              </>
+            )}
+            {isAssignee && task.status === 'in_review' && !canApprove && (
+              <span className="text-[12.5px] text-[#71717a] italic">Under review by team leader</span>
             )}
           </div>
         </div>

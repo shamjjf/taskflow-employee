@@ -2,11 +2,11 @@
 
 import { useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
-import { Search, Bell, Plus, X } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
+import { Search, Bell, X } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
 import { useRole } from '@/hooks/useRole';
-import { Button } from '@/components/ui';
-import { useUIStore } from '@/store/uiStore';
+import { notificationsService } from '@/modules/notifications/services/notificationsService';
 import { ProfileMenu } from './ProfileMenu';
 
 const pageTitles: Record<string, string> = {
@@ -27,8 +27,12 @@ export function EmployeeTopbar() {
   const router = useRouter();
   const user = useAuthStore((s) => s.user);
   const { isTeamLeader } = useRole();
-  const openTaskModal = useUIStore((s) => s.openTaskModal);
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
+  const { data: unreadCount = 0 } = useQuery({
+    queryKey: ['notifications', 'unread-count'],
+    queryFn: () => notificationsService.unreadCount(),
+    refetchInterval: 30000,
+  });
 
   let pageTitle = pageTitles[pathname] || 'Dashboard';
   if (pathname.startsWith('/task/')) pageTitle = 'Task Detail';
@@ -59,17 +63,14 @@ export function EmployeeTopbar() {
         </button>
         <button
           onClick={() => router.push('/notifications')}
+          aria-label={unreadCount > 0 ? `${unreadCount} unread notifications` : 'Notifications'}
           className="w-[34px] h-[34px] rounded-md flex items-center justify-center text-[#71717a] hover:bg-surface-muted hover:text-[#18181b] transition-colors relative"
         >
           <Bell size={18} />
-          <span className="absolute top-2 right-2 w-2 h-2 bg-danger rounded-full border-2 border-white" />
+          {unreadCount > 0 && (
+            <span className="absolute top-2 right-2 w-2 h-2 bg-danger rounded-full border-2 border-white" />
+          )}
         </button>
-        {/* {isTeamLeader && (
-          <Button variant="primary" onClick={openTaskModal}>
-            <Plus size={14} strokeWidth={2.5} />
-            Assign Task
-          </Button>
-        )} */}
         <div className="w-px h-6 bg-border mx-1" />
         <ProfileMenu />
       </div>

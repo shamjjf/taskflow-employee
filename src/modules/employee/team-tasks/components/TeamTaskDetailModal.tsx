@@ -25,6 +25,7 @@ const priorityPill: Record<string, string> = {
 const statusPill: Record<string, string> = {
   assigned: 'bg-[#eff6ff] border-[#bfdbfe] text-[#1d4ed8]',
   in_progress: 'bg-[#fffbeb] border-[#fde68a] text-[#b45309]',
+  in_review: 'bg-[#eff6ff] border-[#bfdbfe] text-[#1d4ed8]',
   completed: 'bg-[#ecfdf5] border-[#a7f3d0] text-[#047857]',
   overdue: 'bg-[#fef2f2] border-[#fecaca] text-[#b91c1c]',
 };
@@ -32,6 +33,7 @@ const statusPill: Record<string, string> = {
 const statusLabel: Record<string, string> = {
   assigned: 'Assigned',
   in_progress: 'In Progress',
+  in_review: 'In Review',
   completed: 'Completed',
   overdue: 'Overdue',
 };
