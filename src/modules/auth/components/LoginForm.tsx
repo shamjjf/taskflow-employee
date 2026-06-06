@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, FormEvent } from 'react';
+import { useState, useEffect, FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
-import { Input, Button } from '@/components/ui';
+import { Input, Button, Select } from '@/components/ui';
 import { useAuthStore } from '@/store/authStore';
 import { authService } from '../services/authService';
 
@@ -12,17 +12,45 @@ export function LoginForm() {
   const [selectedRole, setSelectedRole] = useState<LoginRole>('employee');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [orgSlug, setOrgSlug] = useState('');
+  const [organizations, setOrganizations] = useState<
+    { id: number; slug: string; name: string }[]
+  >([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const router = useRouter();
   const login = useAuthStore((s) => s.login);
+
+  useEffect(() => {
+    let cancelled = false;
+    authService
+      .listOrganizations()
+      .then((orgs) => {
+        if (cancelled) return;
+        const list = orgs.length > 0 ? orgs : [{ id: 1, slug: 'jjfindia', name: 'JJF India' }];
+        setOrganizations(list);
+        setOrgSlug((current) => current || list[0].slug);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setOrganizations([{ id: 1, slug: 'jjfindia', name: 'JJF India' }]);
+        setOrgSlug('jjfindia');
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setError('');
     setLoading(true);
     try {
-      const { user, accessToken, refreshToken } = await authService.login(email, password);
+      const { user, accessToken, refreshToken } = await authService.login(
+        email,
+        password,
+        orgSlug || undefined
+      );
 
       if (user.role === 'super_admin') {
         setError('Super Admins should use the admin portal instead.');
@@ -95,6 +123,12 @@ export function LoginForm() {
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
+          <Select
+            label="Organization *"
+            value={orgSlug}
+            onChange={(e) => setOrgSlug(e.target.value)}
+            options={organizations.map((o) => ({ value: o.slug, label: o.name }))}
+          />
           <Input
             label="Email"
             type="email"
