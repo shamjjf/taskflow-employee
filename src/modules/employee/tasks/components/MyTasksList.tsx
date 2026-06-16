@@ -148,7 +148,12 @@ export function MyTasksList() {
       startMutation.mutate(task.id);
     } else if (task.status === 'in_progress') {
       const isOwnTask = !!user && task.assignees.some((a) => a.userId === user.id);
-      if (isTeamLeader && isOwnTask) {
+      // A self-assigned task (creator === assignee) can't be self-approved — it
+      // must go through review so the report-to person (an admin, for a team
+      // leader) approves it. Only a task assigned to the TL by someone else can
+      // be completed directly.
+      const isSelfAssigned = !!user && task.createdBy === user.id;
+      if (isTeamLeader && isOwnTask && !isSelfAssigned) {
         completeMutation.mutate(task.id);
       } else {
         reviewMutation.mutate(task.id);

@@ -7,6 +7,7 @@ import { cn } from '@/lib/utils';
 import { EmployeeSidebar } from './EmployeeSidebar';
 import { EmployeeTopbar } from './EmployeeTopbar';
 import { AssignTaskModal } from '@/modules/employee/team-tasks/components/AssignTaskModal';
+import { SelfAssignTaskModal } from '@/modules/employee/tasks/components/SelfAssignTaskModal';
 import { useRole } from '@/hooks/useRole';
 import { useSocket, useSocketEvent } from '@/hooks/useSocket';
 import { useAuthStore } from '@/store/authStore';
@@ -118,6 +119,7 @@ export function EmployeeShell({ children }: EmployeeShellProps) {
         <main className="flex-1 px-3 py-4 sm:px-8 sm:py-7 overflow-y-auto">{children}</main>
       </div>
       <AssignTaskModal />
+      <SelfAssignTaskModal />
 
       {/* Mounts incoming call popup + active call window globally (browser only) */}
       <CallProvider />

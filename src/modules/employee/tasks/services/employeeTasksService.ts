@@ -1,9 +1,36 @@
 import { api } from '@/lib/api';
-import type { Task, TaskComment, ApiResponse } from '@/types';
+import type { Task, TaskComment, TaskPriority, UserRole, ApiResponse } from '@/types';
+
+export interface ReportToOption {
+  id: number;
+  name: string;
+  role: UserRole;
+  designation?: string | null;
+}
+
+export interface CreateSelfTaskInput {
+  title: string;
+  description?: string;
+  priority: TaskPriority;
+  deadline: string;
+  reportToId?: number;
+}
 
 export const employeeTasksService = {
   async getMyTasks(): Promise<Task[]> {
     const res = await api.get<ApiResponse<Task[]>>('/tasks');
+    return res.data;
+  },
+
+  // Who the current user reports to when self-assigning a task: their team
+  // leader (employees) or the org's sub-admins (team leaders).
+  async getReportToOptions(): Promise<ReportToOption[]> {
+    const res = await api.get<ApiResponse<ReportToOption[]>>('/tasks/report-to-options');
+    return res.data;
+  },
+
+  async createSelfTask(data: CreateSelfTaskInput): Promise<Task> {
+    const res = await api.post<ApiResponse<Task>>('/tasks/self', data);
     return res.data;
   },
 

@@ -208,7 +208,10 @@ export function EmployeeTaskCard({
             </Button>
           )}
           {isAssignee && task.status === 'in_review' && (
-            isTeamLeader ? (
+            // A team leader can self-complete a task assigned to them by someone
+            // else, but NOT one they self-assigned — that must be approved by
+            // their reporting Sub-Admin, so it stays "Under review" here.
+            isTeamLeader && !isCreator ? (
               <Button
                 variant="primary"
                 size="sm"
