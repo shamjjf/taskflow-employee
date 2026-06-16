@@ -2,12 +2,15 @@
 
 import { useState, useMemo, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { UserPlus } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { Button } from '@/components/ui';
 import { EmployeeTaskCard } from './EmployeeTaskCard';
 import { employeeTasksService } from '../services/employeeTasksService';
 import { normalizeTask } from '@/lib/normalizers';
 import { useSocket, useSocketEvent } from '@/hooks/useSocket';
 import { useRole } from '@/hooks/useRole';
+import { useUIStore } from '@/store/uiStore';
 import type { Task } from '@/types';
 
 type TabKey = 'all' | 'assigned' | 'in_progress' | 'in_review' | 'completed';
@@ -23,6 +26,7 @@ const tabs: { key: TabKey; label: string; filter: (t: Task) => boolean }[] = [
 export function MyTasksList() {
   const queryClient = useQueryClient();
   const { isTeamLeader, user } = useRole();
+  const openSelfTaskModal = useUIStore((s) => s.openSelfTaskModal);
   const [activeTab, setActiveTab] = useState<TabKey>('all');
   const [actionError, setActionError] = useState('');
   const [actionSuccess, setActionSuccess] = useState('');
@@ -192,12 +196,12 @@ export function MyTasksList() {
         </div>
       )}
 
-      {/* Mobile: dropdown */}
-      <div className="sm:hidden mb-4">
+      {/* Mobile: dropdown + self-assign */}
+      <div className="sm:hidden mb-4 flex items-center gap-2">
         <label htmlFor="my-tasks-filter" className="sr-only">
           Filter tasks
         </label>
-        <div className="relative">
+        <div className="relative flex-1">
           <select
             id="my-tasks-filter"
             value={activeTab}
@@ -222,34 +226,46 @@ export function MyTasksList() {
             <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
           </svg>
         </div>
+        <Button variant="primary" size="sm" onClick={openSelfTaskModal} className="shrink-0">
+          <UserPlus size={14} strokeWidth={2.5} />
+          Self-Assign
+        </Button>
       </div>
 
-      {/* Desktop: tabs row */}
-      <div className="hidden sm:flex gap-1 mb-5 border-b border-border">
-        {tabs.map((tab) => (
-          <button
-            key={tab.key}
-            onClick={() => setActiveTab(tab.key)}
-            className={cn(
-              'px-4 py-2.5 text-[13.5px] font-medium border-b-2 transition-all -mb-px',
-              activeTab === tab.key
-                ? 'border-primary text-primary'
-                : 'border-transparent text-[#71717a] hover:text-[#18181b]'
-            )}
-          >
-            {tab.label}
-            <span
+      {/* Desktop: tabs row with self-assign on the right */}
+      <div className="hidden sm:flex items-end justify-between mb-5 border-b border-border">
+        <div className="flex gap-1">
+          {tabs.map((tab) => (
+            <button
+              key={tab.key}
+              onClick={() => setActiveTab(tab.key)}
               className={cn(
-                'ml-1.5 text-[11px] px-1.5 py-0.5 rounded-full',
+                'px-4 py-2.5 text-[13.5px] font-medium border-b-2 transition-all -mb-px',
                 activeTab === tab.key
-                  ? 'bg-primary-soft text-primary'
-                  : 'bg-surface-muted text-[#71717a]'
+                  ? 'border-primary text-primary'
+                  : 'border-transparent text-[#71717a] hover:text-[#18181b]'
               )}
             >
-              {getCount(tab.key)}
-            </span>
-          </button>
-        ))}
+              {tab.label}
+              <span
+                className={cn(
+                  'ml-1.5 text-[11px] px-1.5 py-0.5 rounded-full',
+                  activeTab === tab.key
+                    ? 'bg-primary-soft text-primary'
+                    : 'bg-surface-muted text-[#71717a]'
+                )}
+              >
+                {getCount(tab.key)}
+              </span>
+            </button>
+          ))}
+        </div>
+        <div className="pb-2">
+          <Button variant="primary" size="sm" onClick={openSelfTaskModal}>
+            <UserPlus size={14} strokeWidth={2.5} />
+            Self-Assign Task
+          </Button>
+        </div>
       </div>
 
       {isLoading ? (
