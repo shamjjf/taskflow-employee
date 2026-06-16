@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Modal, Button, Input, Select } from '@/components/ui';
 import { useUIStore } from '@/store/uiStore';
@@ -25,7 +25,7 @@ export function SelfAssignTaskModal() {
     queryFn: () => employeeTasksService.getReportToOptions(),
     enabled: isSelfTaskModalOpen,
   });
-  const options = data || [];
+  const options = useMemo(() => data || [], [data]);
 
   // Preselect the first option. For an employee there is exactly one — their
   // team leader — so the field is effectively fixed.
